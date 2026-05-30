@@ -1,0 +1,38 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "chrischall",
+  "owner": {
+    "name": "Chris Chall",
+    "email": "chris.c.hall@gmail.com"
+  },
+  "metadata": {
+    "description": "App Store Connect tools for Claude Code",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "app-store-connect",
+      "displayName": "App Store Connect",
+      "source": "./",
+      "description": "App Store Connect tools for Claude — apps, TestFlight, customer reviews, sales/finance reports, and team users via MCP",
+      "version": "0.1.0",
+      "author": {
+        "name": "Chris Chall"
+      },
+      "homepage": "https://github.com/chrischall/app-store-connect-mcp",
+      "repository": "https://github.com/chrischall/app-store-connect-mcp",
+      "license": "MIT",
+      "keywords": [
+        "app-store-connect",
+        "appstoreconnect",
+        "apple",
+        "ios",
+        "testflight",
+        "app-store",
+        "reviews",
+        "mcp"
+      ],
+      "category": "productivity"
+    }
+  ]
+}

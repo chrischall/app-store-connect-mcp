@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "app-store-connect": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/bundle.js"],
+      "env": {
+        "APP_STORE_CONNECT_KEY_ID": "${APP_STORE_CONNECT_KEY_ID}",
+        "APP_STORE_CONNECT_ISSUER_ID": "${APP_STORE_CONNECT_ISSUER_ID}",
+        "APP_STORE_CONNECT_PRIVATE_KEY": "${APP_STORE_CONNECT_PRIVATE_KEY}",
+        "APP_STORE_CONNECT_PRIVATE_KEY_PATH": "${APP_STORE_CONNECT_PRIVATE_KEY_PATH}"
+      }
+    }
+  }
+}

@@ -1,0 +1,157 @@
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod';
+import { textResult } from '@chrischall/mcp-utils';
+import { client } from '../client.js';
+import { AscEnvelope, AscResource, ToolResult } from '../types.js';
+
+interface UserAttrs {
+  username: string;
+  firstName: string;
+  lastName: string;
+  roles: string[];
+  allAppsVisible: boolean;
+  provisioningAllowed: boolean;
+}
+
+interface UserInvitationAttrs {
+  email: string;
+  firstName: string;
+  lastName: string;
+  expirationDate?: string;
+  roles: string[];
+  allAppsVisible: boolean;
+  provisioningAllowed: boolean;
+}
+
+const ROLE_VALUES = [
+  'ADMIN',
+  'FINANCE',
+  'ACCOUNT_HOLDER',
+  'SALES',
+  'MARKETING',
+  'APP_MANAGER',
+  'DEVELOPER',
+  'ACCESS_TO_REPORTS',
+  'CUSTOMER_SUPPORT',
+  'CREATE_APPS',
+  'CLOUD_MANAGED_DEVELOPER_ID',
+  'CLOUD_MANAGED_APP_DISTRIBUTION',
+  'GENERATE_INDIVIDUAL_KEYS',
+] as const;
+
+export async function listUsers(args: { limit?: number; username?: string; roles?: string[] } = {}): Promise<ToolResult> {
+  const response = await client.request<AscEnvelope<AscResource<UserAttrs>[]>>('GET', '/v1/users', undefined, {
+    limit: args.limit ?? 100,
+    'filter[username]': args.username,
+    'filter[roles]': args.roles,
+  });
+  const users = response.data.map((r) => ({
+    id: r.id,
+    username: r.attributes?.username,
+    firstName: r.attributes?.firstName,
+    lastName: r.attributes?.lastName,
+    roles: r.attributes?.roles,
+    allAppsVisible: r.attributes?.allAppsVisible,
+  }));
+  return textResult({ count: users.length, users });
+}
+
+export async function listUserInvitations(args: { limit?: number; email?: string } = {}): Promise<ToolResult> {
+  const response = await client.request<AscEnvelope<AscResource<UserInvitationAttrs>[]>>(
+    'GET',
+    '/v1/userInvitations',
+    undefined,
+    {
+      limit: args.limit ?? 100,
+      'filter[email]': args.email,
+    }
+  );
+  const invitations = response.data.map((r) => ({
+    id: r.id,
+    email: r.attributes?.email,
+    firstName: r.attributes?.firstName,
+    lastName: r.attributes?.lastName,
+    expirationDate: r.attributes?.expirationDate,
+    roles: r.attributes?.roles,
+    allAppsVisible: r.attributes?.allAppsVisible,
+  }));
+  return textResult({ count: invitations.length, invitations });
+}
+
+export async function inviteUser(args: {
+  email: string;
+  firstName: string;
+  lastName: string;
+  roles: string[];
+  allAppsVisible?: boolean;
+  provisioningAllowed?: boolean;
+  visibleAppIds?: string[];
+}): Promise<ToolResult> {
+  const relationships: Record<string, { data: { id: string; type: string }[] }> = {};
+  if (args.visibleAppIds?.length) {
+    relationships.visibleApps = { data: args.visibleAppIds.map((id) => ({ id, type: 'apps' })) };
+  }
+  const body = {
+    data: {
+      type: 'userInvitations',
+      attributes: {
+        email: args.email,
+        firstName: args.firstName,
+        lastName: args.lastName,
+        roles: args.roles,
+        allAppsVisible: args.allAppsVisible ?? args.visibleAppIds === undefined,
+        provisioningAllowed: args.provisioningAllowed ?? false,
+      },
+      ...(Object.keys(relationships).length > 0 ? { relationships } : {}),
+    },
+  };
+  const response = await client.request<AscEnvelope<AscResource<UserInvitationAttrs>>>('POST', '/v1/userInvitations', body);
+  return textResult({ id: response.data.id, ...response.data.attributes });
+}
+
+export function registerUserTools(server: McpServer): void {
+  server.registerTool(
+    'list_users',
+    {
+      description: 'List users on your App Store Connect team.',
+      inputSchema: {
+        limit: z.number().int().min(1).max(200).optional().describe('Max users (default 100)'),
+        username: z.string().optional().describe('Exact username (email) filter'),
+        roles: z.array(z.enum(ROLE_VALUES)).optional().describe('Filter by one or more roles'),
+      },
+      annotations: { readOnlyHint: true },
+    },
+    listUsers
+  );
+
+  server.registerTool(
+    'list_user_invitations',
+    {
+      description: 'List pending user invitations on your team.',
+      inputSchema: {
+        limit: z.number().int().min(1).max(200).optional().describe('Max invitations (default 100)'),
+        email: z.string().optional().describe('Exact email filter'),
+      },
+      annotations: { readOnlyHint: true },
+    },
+    listUserInvitations
+  );
+
+  server.registerTool(
+    'invite_user',
+    {
+      description: 'Invite a new user to your App Store Connect team with specified roles.',
+      inputSchema: {
+        email: z.string().email().describe("User's email"),
+        firstName: z.string().describe('First name'),
+        lastName: z.string().describe('Last name'),
+        roles: z.array(z.enum(ROLE_VALUES)).min(1).describe('Roles to assign'),
+        allAppsVisible: z.boolean().optional().describe('Grant access to all apps. Default: true unless visibleAppIds is provided.'),
+        provisioningAllowed: z.boolean().optional().describe('Allow access to provisioning (certificates/profiles). Default false.'),
+        visibleAppIds: z.array(z.string()).optional().describe('Restrict visibility to these app IDs. If provided, allAppsVisible defaults to false.'),
+      },
+      annotations: { destructiveHint: false },
+    },
+    inviteUser
+  );
+}
