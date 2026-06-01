@@ -45,7 +45,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@chrischall/mcp-utils": "file:../mcp-utils/chrischall-mcp-utils-0.1.0.tgz",
+    "@chrischall/mcp-utils": "^0.1.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "dotenv": "^17.4.0",
     "zod": "^4.4.2"
