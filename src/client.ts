@@ -3,10 +3,12 @@ import { fileURLToPath } from 'url';
 import { readFileSync } from 'fs';
 import { createPrivateKey, sign as cryptoSign } from 'crypto';
 import {
+  createApiClient,
+  formatApiError,
   loadDotenvSafely,
   readEnvVar,
   expandPath,
-  truncateErrorMessage,
+  type ApiClient,
 } from '@chrischall/mcp-utils';
 
 // Load .env (local dev) from the package root. `loadDotenvSafely` swallows a
@@ -28,10 +30,15 @@ function readVar(key: string): string | undefined {
 }
 
 const API_BASE = 'https://api.appstoreconnect.apple.com';
+const SERVICE_NAME = 'App Store Connect';
 
 // JWT lifetime: Apple allows up to 20 minutes. We re-mint with 2-minute buffer.
 const JWT_LIFETIME_SEC = 20 * 60;
 const JWT_REFRESH_BUFFER_MS = 2 * 60 * 1000;
+
+// Per-request timeout (the repo previously had none — requests could hang
+// until the MCP host killed the tool call).
+const REQUEST_TIMEOUT_MS = 30_000;
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
@@ -98,6 +105,33 @@ export function mintJwt(config: JwtConfig, now: Date = new Date()): string {
 export class AppStoreConnectClient {
   private cachedToken: string | null = null;
   private cachedTokenExpiry: Date | null = null;
+  private readonly api: ApiClient;
+
+  constructor() {
+    // Shared bearer-client kit (one-shot 429 retry, 401 mapping, 204/empty
+    // handling, redacted errors, per-attempt timeout). Auth is routed through a
+    // small ReactiveTokenSource adapter over the Apple-specific ES256 mint so
+    // the exact clear-cache → re-mint → replay-once-on-401 semantics survive.
+    this.api = createApiClient({
+      baseUrl: API_BASE,
+      serviceName: SERVICE_NAME,
+      tokenManager: { withAuth: (call) => this.withAuth(call) },
+      timeout: REQUEST_TIMEOUT_MS,
+    });
+  }
+
+  /**
+   * Run `call` with a freshly-ensured JWT; on a 401, clear the cached token,
+   * re-mint, and replay exactly once. A second 401 surfaces through the shared
+   * client's unauthorized mapping.
+   */
+  private async withAuth(call: (accessToken: string) => Promise<Response>): Promise<Response> {
+    const first = await call(this.ensureToken());
+    if (first.status !== 401) return first;
+    this.cachedToken = null;
+    this.cachedTokenExpiry = null;
+    return call(this.ensureToken());
+  }
 
   /**
    * Make an authenticated request to the App Store Connect API.
@@ -106,67 +140,38 @@ export class AppStoreConnectClient {
    * For non-JSON responses (e.g. report TSVs), use `requestRaw`.
    */
   async request<T>(method: HttpMethod, path: string, body?: unknown, query?: Record<string, string | number | string[] | undefined>): Promise<T> {
-    const response = await this.doFetch(method, path, body, query);
-    const text = await response.text();
-    if (!response.ok) {
-      throw new Error(
-        `App Store Connect API error ${response.status} ${response.statusText} for ${method} ${path}: ${truncateErrorMessage(text, 500)}`
-      );
-    }
-    return (text ? JSON.parse(text) : null) as T;
+    // buildUrl keeps Apple's comma-joined array convention (the shared
+    // buildQueryString expands arrays as repeated keys, which ASC rejects).
+    const pathWithQuery = buildUrl(path, query).slice(API_BASE.length);
+    return this.api.fetchJson<T>(method, pathWithQuery, body !== undefined ? { body } : {});
   }
 
   /**
    * Make an authenticated request and return the raw response body as a Buffer.
-   * Used for sales/finance report downloads which return gzipped TSVs.
+   * Used for sales/finance report downloads which return gzipped TSVs — a thin
+   * local raw-fetch path (the shared client has no fetchRaw), sharing the same
+   * withAuth re-mint/replay, one-shot 429 retry, and timeout.
    */
   async requestRaw(method: HttpMethod, path: string, query?: Record<string, string | number | string[] | undefined>): Promise<{ buffer: Buffer; contentType: string | null }> {
-    const response = await this.doFetch(method, path, undefined, query);
+    const url = buildUrl(path, query);
+    const doFetch = (token: string): Promise<Response> =>
+      fetch(url, {
+        method,
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      });
+
+    let response = await this.withAuth(doFetch);
+    if (response.status === 429) {
+      await new Promise<void>((r) => setTimeout(r, 2000));
+      response = await this.withAuth(doFetch);
+    }
     if (!response.ok) {
-      const text = await response.text();
-      throw new Error(
-        `App Store Connect API error ${response.status} ${response.statusText} for ${method} ${path}: ${truncateErrorMessage(text, 500)}`
-      );
+      const text = await response.text().catch(() => '');
+      throw new Error(formatApiError(response.status, method, path, text, { service: SERVICE_NAME }));
     }
     const arrayBuffer = await response.arrayBuffer();
     return { buffer: Buffer.from(arrayBuffer), contentType: response.headers.get('content-type') };
-  }
-
-  private async doFetch(
-    method: HttpMethod,
-    path: string,
-    body: unknown,
-    query: Record<string, string | number | string[] | undefined> | undefined,
-    isAuthRetry = false,
-    isRateRetry = false
-  ): Promise<Response> {
-    const token = this.ensureToken();
-    const url = buildUrl(path, query);
-
-    const headers: Record<string, string> = {
-      authorization: `Bearer ${token}`,
-      accept: 'application/json',
-    };
-    if (body !== undefined) headers['content-type'] = 'application/json';
-
-    const response = await fetch(url, {
-      method,
-      headers,
-      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-    });
-
-    if (response.status === 401 && !isAuthRetry) {
-      this.cachedToken = null;
-      this.cachedTokenExpiry = null;
-      return this.doFetch(method, path, body, query, true, isRateRetry);
-    }
-
-    if (response.status === 429 && !isRateRetry) {
-      await new Promise<void>((r) => setTimeout(r, 2000));
-      return this.doFetch(method, path, body, query, isAuthRetry, true);
-    }
-
-    return response;
   }
 
   private ensureToken(): string {

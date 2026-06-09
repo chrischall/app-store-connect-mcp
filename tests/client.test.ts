@@ -130,8 +130,8 @@ describe('AppStoreConnectClient.request', () => {
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe('https://api.appstoreconnect.apple.com/v1/apps');
     const headers = init.headers as Record<string, string>;
-    expect(headers.authorization).toMatch(/^Bearer ey/);
-    expect(headers.accept).toBe('application/json');
+    expect(headers.Authorization ?? headers.authorization).toMatch(/^Bearer ey/);
+    expect(headers.Accept ?? headers.accept).toBe('application/json');
   });
 
   it('sends body as JSON with content-type for POST', async () => {
@@ -140,7 +140,8 @@ describe('AppStoreConnectClient.request', () => {
     await c.request('POST', '/v1/betaTesters', { foo: 'bar' });
 
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect((init.headers as Record<string, string>)['content-type']).toBe('application/json');
+    const headers = init.headers as Record<string, string>;
+    expect(headers['Content-Type'] ?? headers['content-type']).toBe('application/json');
     expect(init.body).toBe(JSON.stringify({ foo: 'bar' }));
     expect(init.method).toBe('POST');
   });
@@ -175,6 +176,42 @@ describe('AppStoreConnectClient.request', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it('mints a fresh token for the 401 replay (cache cleared, not resent)', async () => {
+    fetchMock
+      .mockResolvedValueOnce(makeResponse({ errors: [{ status: '401' }] }, 401))
+      .mockResolvedValueOnce(makeResponse({ data: [] }));
+    const c = new AppStoreConnectClient();
+    await c.request('GET', '/v1/apps');
+
+    const auth1 = ((fetchMock.mock.calls[0]![1] as RequestInit).headers as Record<string, string>);
+    const auth2 = ((fetchMock.mock.calls[1]![1] as RequestInit).headers as Record<string, string>);
+    const token1 = (auth1.Authorization ?? auth1.authorization)!;
+    const token2 = (auth2.Authorization ?? auth2.authorization)!;
+    expect(token1).toMatch(/^Bearer ey/);
+    expect(token2).toMatch(/^Bearer ey/);
+    // ES256 signatures are randomized, so a re-minted JWT never equals the
+    // cached one — proving the replay used a fresh mint, not the stale token.
+    expect(token2).not.toBe(token1);
+  });
+
+  it('surfaces an unauthorized error when the 401 persists after the re-mint replay', async () => {
+    fetchMock.mockResolvedValue(makeResponse({ errors: [{ status: '401' }] }, 401));
+    const c = new AppStoreConnectClient();
+    await expect(c.request('GET', '/v1/apps')).rejects.toThrow(/[Uu]nauthorized/);
+    // exactly one replay: initial attempt + one re-minted retry
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('passes a timeout AbortSignal to fetch so requests cannot hang forever', async () => {
+    fetchMock.mockResolvedValueOnce(makeResponse({ data: [] }));
+    const c = new AppStoreConnectClient();
+    await c.request('GET', '/v1/apps');
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+    expect((init.signal as AbortSignal).aborted).toBe(false);
+  });
+
   it('retries once on 429 with backoff', async () => {
     vi.spyOn(globalThis, 'setTimeout').mockImplementation((fn: TimerHandler) => {
       if (typeof fn === 'function') fn();
@@ -191,7 +228,7 @@ describe('AppStoreConnectClient.request', () => {
   it('throws helpful error on non-2xx with body excerpt', async () => {
     fetchMock.mockResolvedValueOnce(makeResponse({ errors: [{ title: 'Forbidden' }] }, 403));
     const c = new AppStoreConnectClient();
-    await expect(c.request('GET', '/v1/apps')).rejects.toThrow(/App Store Connect API error 403/);
+    await expect(c.request('GET', '/v1/apps')).rejects.toThrow(/App Store Connect error 403 for GET \/v1\/apps.*Forbidden/);
   });
 
   it('strips `${...}` placeholder env values', async () => {
@@ -236,5 +273,36 @@ describe('AppStoreConnectClient.requestRaw', () => {
 
     expect(result.contentType).toBe('application/a-gzip');
     expect(Buffer.compare(result.buffer, fakeBuffer)).toBe(0);
+  });
+
+  it('re-mints and replays once on 401', async () => {
+    fetchMock
+      .mockResolvedValueOnce(makeResponse('', 401))
+      .mockResolvedValueOnce(makeResponse(Buffer.from([0x1f, 0x8b])));
+    const c = new AppStoreConnectClient();
+    const result = await c.requestRaw('GET', '/v1/salesReports');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.buffer.length).toBeGreaterThan(0);
+  });
+
+  it('retries once on 429 with backoff', async () => {
+    vi.spyOn(globalThis, 'setTimeout').mockImplementation((fn: TimerHandler) => {
+      if (typeof fn === 'function') fn();
+      return 0 as unknown as ReturnType<typeof setTimeout>;
+    });
+    fetchMock
+      .mockResolvedValueOnce(makeResponse('', 429))
+      .mockResolvedValueOnce(makeResponse(Buffer.from([0x1f, 0x8b])));
+    const c = new AppStoreConnectClient();
+    await c.requestRaw('GET', '/v1/salesReports');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('passes a timeout AbortSignal to fetch', async () => {
+    fetchMock.mockResolvedValueOnce(makeResponse(Buffer.from([0x1f, 0x8b])));
+    const c = new AppStoreConnectClient();
+    await c.requestRaw('GET', '/v1/salesReports');
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(init.signal).toBeInstanceOf(AbortSignal);
   });
 });
