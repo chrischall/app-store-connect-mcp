@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { textResult } from '@chrischall/mcp-utils';
-import { client } from '../client.js';
+import { client, paginate, pageSize, paginateOpts } from '../client.js';
 import { AscEnvelope, AscResource, ToolResult } from '../types.js';
 
 interface CustomerReviewAttrs {
@@ -19,20 +19,19 @@ interface ReviewResponseAttrs {
   state: string;
 }
 
-export async function listCustomerReviews(args: { appId: string; limit?: number; rating?: number; territory?: string; sort?: 'createdDate' | '-createdDate' | 'rating' | '-rating' } = { appId: '' }): Promise<ToolResult> {
+export async function listCustomerReviews(args: { appId: string; limit?: number; rating?: number; territory?: string; sort?: 'createdDate' | '-createdDate' | 'rating' | '-rating'; auto_paginate?: boolean } = { appId: '' }): Promise<ToolResult> {
   if (!args.appId) throw new Error('appId is required');
-  const response = await client.request<AscEnvelope<AscResource<CustomerReviewAttrs>[]>>(
-    'GET',
+  const { items, pagination } = await paginate<AscResource<CustomerReviewAttrs>>(
     `/v1/apps/${args.appId}/customerReviews`,
-    undefined,
     {
-      limit: args.limit ?? 50,
+      limit: pageSize(args.limit, 50, args.auto_paginate),
       'filter[rating]': args.rating === undefined ? undefined : String(args.rating),
       'filter[territory]': args.territory,
       sort: args.sort ?? '-createdDate',
-    }
+    },
+    paginateOpts(args, 50)
   );
-  const reviews = response.data.map((r) => ({
+  const reviews = items.map((r) => ({
     id: r.id,
     rating: r.attributes?.rating,
     title: r.attributes?.title,
@@ -41,7 +40,7 @@ export async function listCustomerReviews(args: { appId: string; limit?: number;
     createdDate: r.attributes?.createdDate,
     territory: r.attributes?.territory,
   }));
-  return textResult({ count: reviews.length, reviews });
+  return textResult({ count: reviews.length, reviews, pagination });
 }
 
 export async function getCustomerReview(args: { reviewId: string }): Promise<ToolResult> {
@@ -73,7 +72,8 @@ export function registerReviewTools(server: McpServer): void {
       description: 'List customer reviews for an app, sorted by date (newest first by default). Filter by rating or territory.',
       inputSchema: {
         appId: z.string().describe('App Store Connect app ID'),
-        limit: z.number().int().min(1).max(200).optional().describe('Max reviews (default 50)'),
+        limit: z.number().int().min(1).max(1000).optional().describe('Max reviews (default 50). With auto_paginate this is the total across pages.'),
+        auto_paginate: z.boolean().optional().describe('Follow links.next across pages until the limit is reached (default false).'),
         rating: z.number().int().min(1).max(5).optional().describe('Filter by star rating (1-5)'),
         territory: z.string().optional().describe('Filter by territory code, e.g. USA, GBR, JPN'),
         sort: z.enum(['createdDate', '-createdDate', 'rating', '-rating']).optional().describe('Sort order (prefix - for descending)'),

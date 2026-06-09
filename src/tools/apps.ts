@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { textResult } from '@chrischall/mcp-utils';
-import { client } from '../client.js';
+import { client, paginate, pageSize, paginateOpts } from '../client.js';
 import { AscEnvelope, AscResource, ToolResult } from '../types.js';
 
 interface AppAttrs {
@@ -37,14 +37,18 @@ function compactApp(r: AscResource<AppAttrs>) {
   };
 }
 
-export async function listApps(args: { limit?: number; bundleId?: string; name?: string } = {}): Promise<ToolResult> {
-  const response = await client.request<AscEnvelope<AscResource<AppAttrs>[]>>('GET', '/v1/apps', undefined, {
-    limit: args.limit ?? 50,
-    'filter[bundleId]': args.bundleId,
-    'filter[name]': args.name,
-  });
-  const apps = response.data.map(compactApp);
-  return textResult({ count: apps.length, apps });
+export async function listApps(args: { limit?: number; bundleId?: string; name?: string; auto_paginate?: boolean } = {}): Promise<ToolResult> {
+  const { items, pagination } = await paginate<AscResource<AppAttrs>>(
+    '/v1/apps',
+    {
+      limit: pageSize(args.limit, 50, args.auto_paginate),
+      'filter[bundleId]': args.bundleId,
+      'filter[name]': args.name,
+    },
+    paginateOpts(args, 50)
+  );
+  const apps = items.map(compactApp);
+  return textResult({ count: apps.length, apps, pagination });
 }
 
 export async function getApp(args: { appId: string }): Promise<ToolResult> {
@@ -52,13 +56,17 @@ export async function getApp(args: { appId: string }): Promise<ToolResult> {
   return textResult({ id: response.data.id, ...response.data.attributes });
 }
 
-export async function listAppStoreVersions(args: { appId: string; limit?: number; platform?: string; appStoreState?: string }): Promise<ToolResult> {
-  const response = await client.request<AscEnvelope<AscResource<AppVersionAttrs>[]>>('GET', `/v1/apps/${args.appId}/appStoreVersions`, undefined, {
-    limit: args.limit ?? 25,
-    'filter[platform]': args.platform,
-    'filter[appStoreState]': args.appStoreState,
-  });
-  const versions = response.data.map((r) => ({
+export async function listAppStoreVersions(args: { appId: string; limit?: number; platform?: string; appStoreState?: string; auto_paginate?: boolean }): Promise<ToolResult> {
+  const { items, pagination } = await paginate<AscResource<AppVersionAttrs>>(
+    `/v1/apps/${args.appId}/appStoreVersions`,
+    {
+      limit: pageSize(args.limit, 25, args.auto_paginate),
+      'filter[platform]': args.platform,
+      'filter[appStoreState]': args.appStoreState,
+    },
+    paginateOpts({ limit: args.limit, auto_paginate: args.auto_paginate }, 25)
+  );
+  const versions = items.map((r) => ({
     id: r.id,
     versionString: r.attributes?.versionString,
     platform: r.attributes?.platform,
@@ -66,7 +74,7 @@ export async function listAppStoreVersions(args: { appId: string; limit?: number
     releaseType: r.attributes?.releaseType,
     createdDate: r.attributes?.createdDate,
   }));
-  return textResult({ count: versions.length, versions });
+  return textResult({ count: versions.length, versions, pagination });
 }
 
 export async function getAppInfos(args: { appId: string }): Promise<ToolResult> {
@@ -81,7 +89,8 @@ export function registerAppTools(server: McpServer): void {
     {
       description: 'List apps in your App Store Connect account. Supports optional filters by bundleId and name.',
       inputSchema: {
-        limit: z.number().int().min(1).max(200).optional().describe('Maximum number of apps to return (default 50, max 200)'),
+        limit: z.number().int().min(1).max(1000).optional().describe('Max apps to return (default 50). Without auto_paginate this is capped at one API page (200); with auto_paginate it is the total across pages.'),
+        auto_paginate: z.boolean().optional().describe('Follow links.next across pages until the limit is reached (default false). Check the pagination block in the result for has_more.'),
         bundleId: z.string().optional().describe('Exact bundle ID filter (e.g. com.example.MyApp)'),
         name: z.string().optional().describe('Exact app name filter'),
       },
@@ -108,7 +117,8 @@ export function registerAppTools(server: McpServer): void {
       description: 'List App Store versions (releases) for an app, including state and platform.',
       inputSchema: {
         appId: z.string().describe('App Store Connect app ID'),
-        limit: z.number().int().min(1).max(200).optional().describe('Max versions to return (default 25)'),
+        limit: z.number().int().min(1).max(1000).optional().describe('Max versions to return (default 25). With auto_paginate this is the total across pages.'),
+        auto_paginate: z.boolean().optional().describe('Follow links.next across pages until the limit is reached (default false).'),
         platform: z.enum(['IOS', 'MAC_OS', 'TV_OS', 'VISION_OS']).optional().describe('Filter by platform'),
         appStoreState: z.string().optional().describe('Filter by state, e.g. READY_FOR_SALE, IN_REVIEW, REJECTED'),
       },

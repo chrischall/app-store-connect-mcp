@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { textResult } from '@chrischall/mcp-utils';
-import { client } from '../client.js';
+import { client, paginate, pageSize, paginateOpts } from '../client.js';
 import { AscEnvelope, AscResource, ToolResult } from '../types.js';
 
 interface BuildAttrs {
@@ -32,15 +32,15 @@ interface BetaTesterAttrs {
   state?: string;
 }
 
-export async function listBuilds(args: { appId?: string; limit?: number; processingState?: string; version?: string } = {}): Promise<ToolResult> {
-  const response = await client.request<AscEnvelope<AscResource<BuildAttrs>[]>>('GET', '/v1/builds', undefined, {
-    limit: args.limit ?? 25,
+export async function listBuilds(args: { appId?: string; limit?: number; processingState?: string; version?: string; auto_paginate?: boolean } = {}): Promise<ToolResult> {
+  const { items, pagination } = await paginate<AscResource<BuildAttrs>>('/v1/builds', {
+    limit: pageSize(args.limit, 25, args.auto_paginate),
     'filter[app]': args.appId,
     'filter[processingState]': args.processingState,
     'filter[version]': args.version,
     sort: '-uploadedDate',
-  });
-  const builds = response.data.map((r) => ({
+  }, paginateOpts(args, 25));
+  const builds = items.map((r) => ({
     id: r.id,
     version: r.attributes?.version,
     uploadedDate: r.attributes?.uploadedDate,
@@ -49,7 +49,7 @@ export async function listBuilds(args: { appId?: string; limit?: number; process
     expirationDate: r.attributes?.expirationDate,
     minOsVersion: r.attributes?.minOsVersion,
   }));
-  return textResult({ count: builds.length, builds });
+  return textResult({ count: builds.length, builds, pagination });
 }
 
 export async function getBuild(args: { buildId: string }): Promise<ToolResult> {
@@ -57,13 +57,13 @@ export async function getBuild(args: { buildId: string }): Promise<ToolResult> {
   return textResult({ id: response.data.id, ...response.data.attributes });
 }
 
-export async function listBetaGroups(args: { appId?: string; limit?: number; isInternalGroup?: boolean } = {}): Promise<ToolResult> {
-  const response = await client.request<AscEnvelope<AscResource<BetaGroupAttrs>[]>>('GET', '/v1/betaGroups', undefined, {
-    limit: args.limit ?? 50,
+export async function listBetaGroups(args: { appId?: string; limit?: number; isInternalGroup?: boolean; auto_paginate?: boolean } = {}): Promise<ToolResult> {
+  const { items, pagination } = await paginate<AscResource<BetaGroupAttrs>>('/v1/betaGroups', {
+    limit: pageSize(args.limit, 50, args.auto_paginate),
     'filter[app]': args.appId,
     'filter[isInternalGroup]': args.isInternalGroup === undefined ? undefined : String(args.isInternalGroup),
-  });
-  const groups = response.data.map((r) => ({
+  }, paginateOpts(args, 50));
+  const groups = items.map((r) => ({
     id: r.id,
     name: r.attributes?.name,
     isInternalGroup: r.attributes?.isInternalGroup,
@@ -71,17 +71,17 @@ export async function listBetaGroups(args: { appId?: string; limit?: number; isI
     publicLinkEnabled: r.attributes?.publicLinkEnabled,
     createdDate: r.attributes?.createdDate,
   }));
-  return textResult({ count: groups.length, groups });
+  return textResult({ count: groups.length, groups, pagination });
 }
 
-export async function listBetaTesters(args: { appId?: string; betaGroupId?: string; email?: string; limit?: number } = {}): Promise<ToolResult> {
-  const response = await client.request<AscEnvelope<AscResource<BetaTesterAttrs>[]>>('GET', '/v1/betaTesters', undefined, {
-    limit: args.limit ?? 100,
+export async function listBetaTesters(args: { appId?: string; betaGroupId?: string; email?: string; limit?: number; auto_paginate?: boolean } = {}): Promise<ToolResult> {
+  const { items, pagination } = await paginate<AscResource<BetaTesterAttrs>>('/v1/betaTesters', {
+    limit: pageSize(args.limit, 100, args.auto_paginate),
     'filter[apps]': args.appId,
     'filter[betaGroups]': args.betaGroupId,
     'filter[email]': args.email,
-  });
-  const testers = response.data.map((r) => ({
+  }, paginateOpts(args, 100));
+  const testers = items.map((r) => ({
     id: r.id,
     email: r.attributes?.email,
     firstName: r.attributes?.firstName,
@@ -89,7 +89,7 @@ export async function listBetaTesters(args: { appId?: string; betaGroupId?: stri
     state: r.attributes?.state,
     inviteType: r.attributes?.inviteType,
   }));
-  return textResult({ count: testers.length, testers });
+  return textResult({ count: testers.length, testers, pagination });
 }
 
 export async function inviteBetaTester(args: { email: string; firstName?: string; lastName?: string; betaGroupIds?: string[]; buildIds?: string[] }): Promise<ToolResult> {
@@ -160,7 +160,8 @@ export function registerTestFlightTools(server: McpServer): void {
       description: 'List recent builds, sorted by upload date (newest first). Filter by app, processing state, or version.',
       inputSchema: {
         appId: z.string().optional().describe('Filter to builds for a single app ID'),
-        limit: z.number().int().min(1).max(200).optional().describe('Max builds (default 25)'),
+        limit: z.number().int().min(1).max(1000).optional().describe('Max builds (default 25). With auto_paginate this is the total across pages.'),
+        auto_paginate: z.boolean().optional().describe('Follow links.next across pages until the limit is reached (default false).'),
         processingState: z.enum(['PROCESSING', 'FAILED', 'INVALID', 'VALID']).optional().describe('Filter by processing state'),
         version: z.string().optional().describe('Filter by build version (e.g. "42")'),
       },
@@ -185,7 +186,8 @@ export function registerTestFlightTools(server: McpServer): void {
       description: 'List TestFlight beta groups (internal and external). Filter by app or group type.',
       inputSchema: {
         appId: z.string().optional().describe('Filter to beta groups for a single app ID'),
-        limit: z.number().int().min(1).max(200).optional().describe('Max groups (default 50)'),
+        limit: z.number().int().min(1).max(1000).optional().describe('Max groups (default 50). With auto_paginate this is the total across pages.'),
+        auto_paginate: z.boolean().optional().describe('Follow links.next across pages until the limit is reached (default false).'),
         isInternalGroup: z.boolean().optional().describe('true = internal-only, false = external'),
       },
       annotations: { readOnlyHint: true },
@@ -201,7 +203,8 @@ export function registerTestFlightTools(server: McpServer): void {
         appId: z.string().optional().describe('Filter to testers with access to a specific app'),
         betaGroupId: z.string().optional().describe('Filter to testers in a specific beta group'),
         email: z.string().optional().describe('Exact email match'),
-        limit: z.number().int().min(1).max(200).optional().describe('Max testers (default 100)'),
+        limit: z.number().int().min(1).max(1000).optional().describe('Max testers (default 100). With auto_paginate this is the total across pages.'),
+        auto_paginate: z.boolean().optional().describe('Follow links.next across pages until the limit is reached (default false).'),
       },
       annotations: { readOnlyHint: true },
     },

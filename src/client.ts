@@ -10,6 +10,7 @@ import {
   expandPath,
   type ApiClient,
 } from '@chrischall/mcp-utils';
+import type { AscEnvelope, AscResource } from './types.js';
 
 // Load .env (local dev) from the package root. `loadDotenvSafely` swallows a
 // missing dotenv module (bundled mcpb runtime) and never lets .env override a
@@ -29,8 +30,14 @@ function readVar(key: string): string | undefined {
   return readEnvVar(key);
 }
 
-const API_BASE = 'https://api.appstoreconnect.apple.com';
+export const API_BASE = 'https://api.appstoreconnect.apple.com';
 const SERVICE_NAME = 'App Store Connect';
+
+// Pagination defaults. ASC paginates via the response BODY's `links.next` (a
+// full URL cursor), NOT a Link header. `maxPages` is a safety cap so a buggy or
+// hostile cursor stream can never loop unboundedly.
+const DEFAULT_PAGE_CAP = 1000;
+const MAX_PAGES = 50;
 
 // JWT lifetime: Apple allows up to 20 minutes. We re-mint with 2-minute buffer.
 const JWT_LIFETIME_SEC = 20 * 60;
@@ -215,3 +222,146 @@ export function buildUrl(path: string, query?: Record<string, string | number | 
 }
 
 export const client = new AppStoreConnectClient();
+
+// App Store Connect's largest accepted `limit` query value for most list
+// endpoints. We never request more than this per page.
+const API_MAX_PAGE_SIZE = 200;
+
+/**
+ * Compute the `limit` query value to send to the API for a single request.
+ *
+ * - Without auto-pagination: the user's `limit` (or the tool default), clamped to
+ *   the API page-size ceiling — i.e. exactly the legacy single-page behavior.
+ * - With auto-pagination: request the largest page the API allows (so the walk
+ *   uses the fewest round-trips), but never more than the total the caller wants.
+ */
+export function pageSize(limit: number | undefined, defaultLimit: number, autoPaginate?: boolean): number {
+  const total = limit ?? defaultLimit;
+  if (autoPaginate) return Math.min(API_MAX_PAGE_SIZE, Math.max(1, total));
+  return Math.min(API_MAX_PAGE_SIZE, Math.max(1, total));
+}
+
+/**
+ * Build {@link PaginateOptions} from a list tool's args. When `auto_paginate` is
+ * off the walk is capped at a single page (`maxPages: 1`) — legacy behavior,
+ * one request, no `links.next` following. When on, the `limit` becomes the total
+ * ceiling across pages.
+ */
+export function paginateOpts(args: { limit?: number; auto_paginate?: boolean }, defaultLimit = DEFAULT_PAGE_CAP): PaginateOptions {
+  if (!args.auto_paginate) {
+    return { limit: args.limit ?? defaultLimit, maxPages: 1 };
+  }
+  return { limit: args.limit ?? defaultLimit };
+}
+
+/** Options controlling how far a paginated list walks. */
+export interface PaginateOptions {
+  /** Max total results to return across all pages (ceiling). Default 1000. */
+  limit?: number;
+  /** Hard cap on the number of pages fetched, guarding runaway loops. Default 50. */
+  maxPages?: number;
+}
+
+/** Per-list pagination summary so truncation is never silent. */
+export interface PaginationInfo {
+  /** Number of results actually returned. */
+  fetched: number;
+  /** Number of API pages fetched. */
+  pages: number;
+  /** True if more results exist beyond what was returned (truncated at the limit/cap). */
+  has_more: boolean;
+  /** The next-page cursor URL when `has_more` is true, so callers can resume manually. */
+  next_cursor?: string;
+}
+
+export interface PaginatedResult<T> {
+  items: T[];
+  pagination: PaginationInfo;
+}
+
+/**
+ * Reduce an absolute App Store Connect `links.next` URL to a path+query relative
+ * to {@link API_BASE} so it can be fed back into {@link AppStoreConnectClient.request}
+ * (which takes a path). Returns `undefined` if the URL points off-host (defensive;
+ * ASC always returns same-host cursors).
+ */
+export function nextUrlToPath(nextUrl: string): string | undefined {
+  let parsed: URL;
+  try {
+    parsed = new URL(nextUrl, API_BASE);
+  } catch {
+    return undefined;
+  }
+  if (parsed.origin !== new URL(API_BASE).origin) return undefined;
+  return `${parsed.pathname}${parsed.search}`;
+}
+
+/**
+ * Walk an App Store Connect list endpoint, following the response body's
+ * `links.next` cursor, and aggregate results up to `limit`.
+ *
+ * Stops when: the limit is reached, `links.next` is absent, the next cursor does
+ * not advance (same URL we just followed), or the `maxPages` cap is hit. The
+ * returned `pagination` block reports how much was fetched and whether more
+ * remains, so a truncated result is never silent.
+ */
+export async function paginate<T = AscResource>(
+  path: string,
+  query?: Record<string, string | number | string[] | undefined>,
+  options: PaginateOptions = {}
+): Promise<PaginatedResult<T>> {
+  const limit = Math.max(1, options.limit ?? DEFAULT_PAGE_CAP);
+  const maxPages = Math.max(1, options.maxPages ?? MAX_PAGES);
+
+  const items: T[] = [];
+  let pages = 0;
+  let nextUrl: string | undefined;
+  let lastFollowedUrl: string | undefined;
+  let hasMore = false;
+
+  while (pages < maxPages) {
+    const response: AscEnvelope<T[]> = nextUrl
+      ? await client.request<AscEnvelope<T[]>>('GET', nextUrlToPath(nextUrl) ?? nextUrl)
+      : await client.request<AscEnvelope<T[]>>('GET', path, undefined, query);
+    pages += 1;
+
+    const pageItems = response.data ?? [];
+    for (const item of pageItems) {
+      if (items.length >= limit) {
+        // Truncated mid-page by the limit; more results remain.
+        hasMore = true;
+        break;
+      }
+      items.push(item);
+    }
+
+    const candidateNext = response.links?.next;
+    if (items.length >= limit) {
+      // Hit the ceiling; surface whether the API itself had more to give.
+      hasMore = hasMore || Boolean(candidateNext);
+      if (candidateNext) nextUrl = candidateNext;
+      break;
+    }
+    if (!candidateNext) {
+      // No more pages from the API.
+      break;
+    }
+    if (candidateNext === lastFollowedUrl) {
+      // Non-advancing cursor — bail rather than loop forever.
+      hasMore = true;
+      nextUrl = candidateNext;
+      break;
+    }
+    lastFollowedUrl = candidateNext;
+    nextUrl = candidateNext;
+  }
+
+  // If we exited because the page cap was hit while a next cursor was pending.
+  if (pages >= maxPages && nextUrl && items.length < limit) {
+    hasMore = true;
+  }
+
+  const pagination: PaginationInfo = { fetched: items.length, pages, has_more: hasMore };
+  if (hasMore && nextUrl) pagination.next_cursor = nextUrl;
+  return { items, pagination };
+}

@@ -51,9 +51,11 @@ App Store Connect uses JSON:API:
 - Filtering: `filter[name]=value`
 - Field selection: `fields[apps]=name,bundleId`
 - Sorting: `sort=-createdDate` (prefix `-` for descending)
-- Pagination: `limit=N`, follow `links.next`
+- Pagination: `limit=N`, follow `links.next` (an absolute URL cursor in the response **body**, not a `Link` header)
 
 `buildUrl()` in client.ts handles the URL building. Array values are comma-joined (Apple's convention, not the standard JSON:API `?key=a&key=b`).
+
+`paginate()` in client.ts walks a list endpoint by following the body's `links.next` cursor. List tools opt in via an `auto_paginate` boolean; `limit` is then the total ceiling across pages (per-page requests are clamped to the API max of 200). Every list result carries a `pagination: { fetched, pages, has_more, next_cursor? }` block so truncation is never silent. The walk stops at the limit, an absent `links.next`, a non-advancing cursor, or a `maxPages` safety cap (50).
 
 ## Testing
 
