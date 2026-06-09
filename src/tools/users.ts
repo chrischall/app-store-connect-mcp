@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { textResult } from '@chrischall/mcp-utils';
-import { client } from '../client.js';
+import { client, paginate, pageSize, paginateOpts } from '../client.js';
 import { AscEnvelope, AscResource, ToolResult } from '../types.js';
 
 interface UserAttrs {
@@ -39,13 +39,13 @@ const ROLE_VALUES = [
   'GENERATE_INDIVIDUAL_KEYS',
 ] as const;
 
-export async function listUsers(args: { limit?: number; username?: string; roles?: string[] } = {}): Promise<ToolResult> {
-  const response = await client.request<AscEnvelope<AscResource<UserAttrs>[]>>('GET', '/v1/users', undefined, {
-    limit: args.limit ?? 100,
+export async function listUsers(args: { limit?: number; username?: string; roles?: string[]; auto_paginate?: boolean } = {}): Promise<ToolResult> {
+  const { items, pagination } = await paginate<AscResource<UserAttrs>>('/v1/users', {
+    limit: pageSize(args.limit, 100, args.auto_paginate),
     'filter[username]': args.username,
     'filter[roles]': args.roles,
-  });
-  const users = response.data.map((r) => ({
+  }, paginateOpts(args, 100));
+  const users = items.map((r) => ({
     id: r.id,
     username: r.attributes?.username,
     firstName: r.attributes?.firstName,
@@ -53,20 +53,19 @@ export async function listUsers(args: { limit?: number; username?: string; roles
     roles: r.attributes?.roles,
     allAppsVisible: r.attributes?.allAppsVisible,
   }));
-  return textResult({ count: users.length, users });
+  return textResult({ count: users.length, users, pagination });
 }
 
-export async function listUserInvitations(args: { limit?: number; email?: string } = {}): Promise<ToolResult> {
-  const response = await client.request<AscEnvelope<AscResource<UserInvitationAttrs>[]>>(
-    'GET',
+export async function listUserInvitations(args: { limit?: number; email?: string; auto_paginate?: boolean } = {}): Promise<ToolResult> {
+  const { items, pagination } = await paginate<AscResource<UserInvitationAttrs>>(
     '/v1/userInvitations',
-    undefined,
     {
-      limit: args.limit ?? 100,
+      limit: pageSize(args.limit, 100, args.auto_paginate),
       'filter[email]': args.email,
-    }
+    },
+    paginateOpts(args, 100)
   );
-  const invitations = response.data.map((r) => ({
+  const invitations = items.map((r) => ({
     id: r.id,
     email: r.attributes?.email,
     firstName: r.attributes?.firstName,
@@ -75,7 +74,7 @@ export async function listUserInvitations(args: { limit?: number; email?: string
     roles: r.attributes?.roles,
     allAppsVisible: r.attributes?.allAppsVisible,
   }));
-  return textResult({ count: invitations.length, invitations });
+  return textResult({ count: invitations.length, invitations, pagination });
 }
 
 export async function inviteUser(args: {
@@ -115,7 +114,8 @@ export function registerUserTools(server: McpServer): void {
     {
       description: 'List users on your App Store Connect team.',
       inputSchema: {
-        limit: z.number().int().min(1).max(200).optional().describe('Max users (default 100)'),
+        limit: z.number().int().min(1).max(1000).optional().describe('Max users (default 100). With auto_paginate this is the total across pages.'),
+        auto_paginate: z.boolean().optional().describe('Follow links.next across pages until the limit is reached (default false).'),
         username: z.string().optional().describe('Exact username (email) filter'),
         roles: z.array(z.enum(ROLE_VALUES)).optional().describe('Filter by one or more roles'),
       },
@@ -129,7 +129,8 @@ export function registerUserTools(server: McpServer): void {
     {
       description: 'List pending user invitations on your team.',
       inputSchema: {
-        limit: z.number().int().min(1).max(200).optional().describe('Max invitations (default 100)'),
+        limit: z.number().int().min(1).max(1000).optional().describe('Max invitations (default 100). With auto_paginate this is the total across pages.'),
+        auto_paginate: z.boolean().optional().describe('Follow links.next across pages until the limit is reached (default false).'),
         email: z.string().optional().describe('Exact email filter'),
       },
       annotations: { readOnlyHint: true },
