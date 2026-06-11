@@ -1,5 +1,8 @@
 # App Store Connect MCP
 
+[![CI](https://github.com/chrischall/app-store-connect-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/chrischall/app-store-connect-mcp/actions/workflows/ci.yml)
+[![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
 A [Model Context Protocol](https://modelcontextprotocol.io) server that connects Claude to [App Store Connect](https://appstoreconnect.apple.com), giving you natural-language access to your apps, builds, TestFlight beta groups and testers, customer reviews, sales/finance reports, and team users.
 
 > [!WARNING]
