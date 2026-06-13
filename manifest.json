@@ -3,7 +3,7 @@
   "manifest_version": "0.3",
   "name": "app-store-connect-mcp",
   "display_name": "App Store Connect",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "App Store Connect tools for Claude — apps, TestFlight builds and testers, customer reviews, sales/finance reports, and team users",
   "author": {
     "name": "Chris Chall",
@@ -32,7 +32,9 @@
     "entry_point": "dist/bundle.js",
     "mcp_config": {
       "command": "node",
-      "args": ["${__dirname}/dist/bundle.js"],
+      "args": [
+        "${__dirname}/dist/bundle.js"
+      ],
       "env": {
         "APP_STORE_CONNECT_KEY_ID": "${user_config.key_id}",
         "APP_STORE_CONNECT_ISSUER_ID": "${user_config.issuer_id}",
@@ -64,30 +66,97 @@
     }
   },
   "tools": [
-    { "name": "list_apps", "description": "List apps in your account with optional filters" },
-    { "name": "get_app", "description": "Get details for a single app by ID" },
-    { "name": "list_app_store_versions", "description": "List App Store releases for an app" },
-    { "name": "get_app_infos", "description": "List App Info records (age rating, store state)" },
-    { "name": "list_builds", "description": "List recent builds (newest first)" },
-    { "name": "get_build", "description": "Get a single build by ID" },
-    { "name": "list_beta_groups", "description": "List TestFlight beta groups" },
-    { "name": "list_beta_testers", "description": "List TestFlight beta testers" },
-    { "name": "invite_beta_tester", "description": "Invite a new beta tester" },
-    { "name": "delete_beta_tester", "description": "Remove a beta tester from your team" },
-    { "name": "add_testers_to_beta_group", "description": "Add testers to a beta group" },
-    { "name": "remove_testers_from_beta_group", "description": "Remove testers from a beta group" },
-    { "name": "submit_build_for_beta_review", "description": "Submit a build for TestFlight beta review" },
-    { "name": "list_customer_reviews", "description": "List customer reviews for an app" },
-    { "name": "get_customer_review", "description": "Get a single review with developer response" },
-    { "name": "respond_to_review", "description": "Post or update the developer response" },
-    { "name": "download_sales_report", "description": "Download a sales/units report (parsed TSV)" },
-    { "name": "download_finance_report", "description": "Download a finance/proceeds report (parsed TSV)" },
-    { "name": "list_users", "description": "List App Store Connect team users" },
-    { "name": "list_user_invitations", "description": "List pending user invitations" },
-    { "name": "invite_user", "description": "Invite a new user to your team" }
+    {
+      "name": "list_apps",
+      "description": "List apps in your account with optional filters"
+    },
+    {
+      "name": "get_app",
+      "description": "Get details for a single app by ID"
+    },
+    {
+      "name": "list_app_store_versions",
+      "description": "List App Store releases for an app"
+    },
+    {
+      "name": "get_app_infos",
+      "description": "List App Info records (age rating, store state)"
+    },
+    {
+      "name": "list_builds",
+      "description": "List recent builds (newest first)"
+    },
+    {
+      "name": "get_build",
+      "description": "Get a single build by ID"
+    },
+    {
+      "name": "list_beta_groups",
+      "description": "List TestFlight beta groups"
+    },
+    {
+      "name": "list_beta_testers",
+      "description": "List TestFlight beta testers"
+    },
+    {
+      "name": "invite_beta_tester",
+      "description": "Invite a new beta tester"
+    },
+    {
+      "name": "delete_beta_tester",
+      "description": "Remove a beta tester from your team"
+    },
+    {
+      "name": "add_testers_to_beta_group",
+      "description": "Add testers to a beta group"
+    },
+    {
+      "name": "remove_testers_from_beta_group",
+      "description": "Remove testers from a beta group"
+    },
+    {
+      "name": "submit_build_for_beta_review",
+      "description": "Submit a build for TestFlight beta review"
+    },
+    {
+      "name": "list_customer_reviews",
+      "description": "List customer reviews for an app"
+    },
+    {
+      "name": "get_customer_review",
+      "description": "Get a single review with developer response"
+    },
+    {
+      "name": "respond_to_review",
+      "description": "Post or update the developer response"
+    },
+    {
+      "name": "download_sales_report",
+      "description": "Download a sales/units report (parsed TSV)"
+    },
+    {
+      "name": "download_finance_report",
+      "description": "Download a finance/proceeds report (parsed TSV)"
+    },
+    {
+      "name": "list_users",
+      "description": "List App Store Connect team users"
+    },
+    {
+      "name": "list_user_invitations",
+      "description": "List pending user invitations"
+    },
+    {
+      "name": "invite_user",
+      "description": "Invite a new user to your team"
+    }
   ],
   "compatibility": {
-    "platforms": ["darwin", "win32", "linux"],
+    "platforms": [
+      "darwin",
+      "win32",
+      "linux"
+    ],
     "runtimes": {
       "node": ">=20.6.0"
     }
