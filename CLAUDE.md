@@ -84,3 +84,10 @@ Version appears in FOUR places — all must match:
 - `server.json` `version` and `packages[0].version`
 - `.claude-plugin/plugin.json` `version` and `.claude-plugin/marketplace.json` `metadata.version` and `plugins[0].version`
 - `src/index.ts` `new McpServer({ version: ... })`
+
+<!-- pr-workflow:v2 -->
+## Pull requests & releases
+
+**Default workflow: branch + PR.** This repo **squash-merges**, so the **PR title MUST be a Conventional Commit** (`fix(scope): …`, `feat(scope): …`) — it becomes the squash commit's subject line, the only thing release-please (`.github/workflows/release-please.yml`) parses to pick the version bump and changelog section. Only `feat` (minor), `fix` (patch), and `!`/`BREAKING CHANGE` (major) cut a release; `perf`/`refactor`/`docs` show in the changelog without bumping; `ci`/`test`/`build`/`chore` are recognised but hidden (`release-please-config.json` → `changelog-sections`). A title without a conventional type is invisible to release-please.
+
+**Don't run `gh pr merge` yourself.** `pr-auto-review.yml` reviews every PR and adds `ready-to-merge` on a `pass` verdict; `auto-merge.yml` then arms `gh pr merge --auto --squash`. Override a `warn`/`fail` only by adding the label yourself. Open a PR only when the change is done — it auto-merges on a passing review.
