@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1](https://github.com/chrischall/app-store-connect-mcp/compare/v0.2.0...v0.2.1) (2026-06-30)
+
+
+### Documentation
+
+* document Conventional Commit PR-title requirement for release-please ([#15](https://github.com/chrischall/app-store-connect-mcp/issues/15)) ([cdb7c66](https://github.com/chrischall/app-store-connect-mcp/commit/cdb7c66f156113fae8043881c4d3d80e451be597))
+* refresh versioning section and add auto-review follow-up convention ([#17](https://github.com/chrischall/app-store-connect-mcp/issues/17)) ([836bab6](https://github.com/chrischall/app-store-connect-mcp/commit/836bab681db3ccee0d298d39ee9180379be52695))
+
 ## [0.2.0](https://github.com/chrischall/app-store-connect-mcp/compare/v0.1.0...v0.2.0) (2026-06-13)
 
 
