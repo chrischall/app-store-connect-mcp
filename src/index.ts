@@ -13,7 +13,7 @@ import { registerUserTools } from './tools/users.js';
 // — the configuration error only surfaces on the first tool call.
 await runMcp({
   name: 'app-store-connect-mcp',
-  version: '0.2.0', // x-release-please-version
+  version: '0.2.1', // x-release-please-version
   banner:
     '[app-store-connect-mcp] This project was developed and is maintained by AI (Claude). Use at your own discretion.',
   tools: [
