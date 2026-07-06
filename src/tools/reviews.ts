@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { textResult } from '@chrischall/mcp-utils';
+import { textResult, schemaConfirm } from '@chrischall/mcp-utils';
 import { client, paginate, pageSize, paginateOpts } from '../client.js';
 import { AscEnvelope, AscResource, ToolResult } from '../types.js';
 
@@ -53,7 +53,7 @@ export async function getCustomerReview(args: { reviewId: string }): Promise<Too
   return textResult({ id: response.data.id, ...response.data.attributes, included: response.included });
 }
 
-export async function respondToReview(args: { reviewId: string; responseBody: string }): Promise<ToolResult> {
+export async function respondToReview(args: { reviewId: string; responseBody: string; confirm?: boolean }): Promise<ToolResult> {
   const body = {
     data: {
       type: 'customerReviewResponses',
@@ -61,6 +61,16 @@ export async function respondToReview(args: { reviewId: string; responseBody: st
       relationships: { review: { data: { id: args.reviewId, type: 'customerReviews' } } },
     },
   };
+  if (args.confirm !== true) {
+    return textResult({
+      dryRun: true,
+      action: 'Post a PUBLIC developer response to a customer review',
+      method: 'POST',
+      path: '/v1/customerReviewResponses',
+      willSend: body,
+      note: 'This response is publicly visible on the App Store. Dry run — re-run with confirm:true to post it.',
+    });
+  }
   const response = await client.request<AscEnvelope<AscResource<ReviewResponseAttrs>>>('POST', '/v1/customerReviewResponses', body);
   return textResult({ id: response.data.id, ...response.data.attributes });
 }
@@ -96,12 +106,14 @@ export function registerReviewTools(server: McpServer): void {
   server.registerTool(
     'respond_to_review',
     {
-      description: "Post or update the developer response to a customer review.",
+      description:
+        'Post or update the PUBLIC developer response to a customer review (visible on the App Store). Without confirm:true this returns a dry-run preview and makes NO network call; with confirm:true it posts the response.',
       inputSchema: {
         reviewId: z.string().describe('Customer review ID to respond to'),
         responseBody: z.string().min(1).max(5970).describe('Response text (max 5970 chars)'),
+        confirm: schemaConfirm,
       },
-      annotations: { destructiveHint: false },
+      annotations: { destructiveHint: true },
     },
     respondToReview
   );
