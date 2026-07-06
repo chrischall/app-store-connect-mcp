@@ -51,7 +51,7 @@ describe('reviews tools', () => {
     reqSpy.mockResolvedValueOnce({
       data: { type: 'customerReviewResponses', id: 'resp1', attributes: { responseBody: 'Thanks!', state: 'PUBLISHED', lastModifiedDate: '2025-10-10' } },
     } as never);
-    await respondToReview({ reviewId: 'r9', responseBody: 'Thanks!' });
+    await respondToReview({ reviewId: 'r9', responseBody: 'Thanks!', confirm: true });
     expect(reqSpy).toHaveBeenCalledWith('POST', '/v1/customerReviewResponses', {
       data: {
         type: 'customerReviewResponses',
@@ -59,5 +59,13 @@ describe('reviews tools', () => {
         relationships: { review: { data: { id: 'r9', type: 'customerReviews' } } },
       },
     });
+  });
+
+  it('respondToReview: without confirm returns a dry-run preview and makes NO network call', async () => {
+    const result = await respondToReview({ reviewId: 'r9', responseBody: 'Thanks!' });
+    expect(reqSpy).not.toHaveBeenCalled();
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.dryRun).toBe(true);
+    expect(parsed.willSend.data.attributes.responseBody).toBe('Thanks!');
   });
 });

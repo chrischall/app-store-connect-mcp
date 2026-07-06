@@ -50,7 +50,7 @@ describe('users tools', () => {
         attributes: { email: 'a@b.com', firstName: 'A', lastName: 'B', roles: ['DEVELOPER'], allAppsVisible: true, provisioningAllowed: false },
       },
     } as never);
-    await inviteUser({ email: 'a@b.com', firstName: 'A', lastName: 'B', roles: ['DEVELOPER'] });
+    await inviteUser({ email: 'a@b.com', firstName: 'A', lastName: 'B', roles: ['DEVELOPER'], confirm: true });
     expect(reqSpy).toHaveBeenCalledWith('POST', '/v1/userInvitations', {
       data: {
         type: 'userInvitations',
@@ -80,6 +80,7 @@ describe('users tools', () => {
       lastName: 'B',
       roles: ['APP_MANAGER'],
       visibleAppIds: ['app1', 'app2'],
+      confirm: true,
     });
     expect(reqSpy).toHaveBeenCalledWith('POST', '/v1/userInvitations', {
       data: {
@@ -97,5 +98,13 @@ describe('users tools', () => {
         },
       },
     });
+  });
+
+  it('inviteUser: without confirm returns a dry-run preview and makes NO network call', async () => {
+    const result = await inviteUser({ email: 'a@b.com', firstName: 'A', lastName: 'B', roles: ['ADMIN'] });
+    expect(reqSpy).not.toHaveBeenCalled();
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.dryRun).toBe(true);
+    expect(parsed.willSend.data.attributes.roles).toEqual(['ADMIN']);
   });
 });

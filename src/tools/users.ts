@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { textResult } from '@chrischall/mcp-utils';
+import { textResult, schemaConfirm } from '@chrischall/mcp-utils';
 import { client, paginate, pageSize, paginateOpts } from '../client.js';
 import { AscEnvelope, AscResource, ToolResult } from '../types.js';
 
@@ -85,6 +85,7 @@ export async function inviteUser(args: {
   allAppsVisible?: boolean;
   provisioningAllowed?: boolean;
   visibleAppIds?: string[];
+  confirm?: boolean;
 }): Promise<ToolResult> {
   const relationships: Record<string, { data: { id: string; type: string }[] }> = {};
   if (args.visibleAppIds?.length) {
@@ -104,6 +105,16 @@ export async function inviteUser(args: {
       ...(Object.keys(relationships).length > 0 ? { relationships } : {}),
     },
   };
+  if (args.confirm !== true) {
+    return textResult({
+      dryRun: true,
+      action: `Invite ${args.email} to your App Store Connect team with roles [${args.roles.join(', ')}] (sends a real email; roles can include ADMIN)`,
+      method: 'POST',
+      path: '/v1/userInvitations',
+      willSend: body,
+      note: 'Dry run — re-run with confirm:true to send the invitation.',
+    });
+  }
   const response = await client.request<AscEnvelope<AscResource<UserInvitationAttrs>>>('POST', '/v1/userInvitations', body);
   return textResult({ id: response.data.id, ...response.data.attributes });
 }
@@ -141,7 +152,7 @@ export function registerUserTools(server: McpServer): void {
   server.registerTool(
     'invite_user',
     {
-      description: 'Invite a new user to your App Store Connect team with specified roles.',
+      description: 'Invite a new user to your App Store Connect team with specified roles (sends a real email; roles can include ADMIN). Without confirm:true this returns a dry-run preview and makes NO network call; with confirm:true it sends the invitation.',
       inputSchema: {
         email: z.string().email().describe("User's email"),
         firstName: z.string().describe('First name'),
@@ -150,8 +161,9 @@ export function registerUserTools(server: McpServer): void {
         allAppsVisible: z.boolean().optional().describe('Grant access to all apps. Default: true unless visibleAppIds is provided.'),
         provisioningAllowed: z.boolean().optional().describe('Allow access to provisioning (certificates/profiles). Default false.'),
         visibleAppIds: z.array(z.string()).optional().describe('Restrict visibility to these app IDs. If provided, allAppsVisible defaults to false.'),
+        confirm: schemaConfirm,
       },
-      annotations: { destructiveHint: false },
+      annotations: { destructiveHint: true },
     },
     inviteUser
   );

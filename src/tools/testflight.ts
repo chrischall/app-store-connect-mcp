@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { textResult } from '@chrischall/mcp-utils';
+import { textResult, schemaConfirm } from '@chrischall/mcp-utils';
 import { client, paginate, pageSize, paginateOpts } from '../client.js';
 import { AscEnvelope, AscResource, ToolResult } from '../types.js';
 
@@ -92,7 +92,7 @@ export async function listBetaTesters(args: { appId?: string; betaGroupId?: stri
   return textResult({ count: testers.length, testers, pagination });
 }
 
-export async function inviteBetaTester(args: { email: string; firstName?: string; lastName?: string; betaGroupIds?: string[]; buildIds?: string[] }): Promise<ToolResult> {
+export async function inviteBetaTester(args: { email: string; firstName?: string; lastName?: string; betaGroupIds?: string[]; buildIds?: string[]; confirm?: boolean }): Promise<ToolResult> {
   const relationships: Record<string, { data: { id: string; type: string }[] }> = {};
   if (args.betaGroupIds?.length) {
     relationships.betaGroups = { data: args.betaGroupIds.map((id) => ({ id, type: 'betaGroups' })) };
@@ -111,32 +111,44 @@ export async function inviteBetaTester(args: { email: string; firstName?: string
       ...(Object.keys(relationships).length > 0 ? { relationships } : {}),
     },
   };
+  if (args.confirm !== true) {
+    return textResult({ dryRun: true, action: `Invite beta tester ${args.email} (sends a real email)`, method: 'POST', path: '/v1/betaTesters', willSend: body, note: 'Dry run — re-run with confirm:true to invite.' });
+  }
   const response = await client.request<AscEnvelope<AscResource<BetaTesterAttrs>>>('POST', '/v1/betaTesters', body);
   return textResult({ id: response.data.id, ...response.data.attributes });
 }
 
-export async function deleteBetaTester(args: { betaTesterId: string }): Promise<ToolResult> {
+export async function deleteBetaTester(args: { betaTesterId: string; confirm?: boolean }): Promise<ToolResult> {
+  if (args.confirm !== true) {
+    return textResult({ dryRun: true, action: 'Permanently remove a beta tester from your team', method: 'DELETE', path: `/v1/betaTesters/${args.betaTesterId}`, note: 'Dry run — re-run with confirm:true to delete.' });
+  }
   await client.request<null>('DELETE', `/v1/betaTesters/${args.betaTesterId}`);
   return textResult({ deleted: args.betaTesterId });
 }
 
-export async function addTestersToBetaGroup(args: { betaGroupId: string; betaTesterIds: string[] }): Promise<ToolResult> {
+export async function addTestersToBetaGroup(args: { betaGroupId: string; betaTesterIds: string[]; confirm?: boolean }): Promise<ToolResult> {
   const body = {
     data: args.betaTesterIds.map((id) => ({ id, type: 'betaTesters' })),
   };
+  if (args.confirm !== true) {
+    return textResult({ dryRun: true, action: `Add ${args.betaTesterIds.length} tester(s) to beta group ${args.betaGroupId}`, method: 'POST', path: `/v1/betaGroups/${args.betaGroupId}/relationships/betaTesters`, willSend: body, note: 'Dry run — re-run with confirm:true to add.' });
+  }
   await client.request<null>('POST', `/v1/betaGroups/${args.betaGroupId}/relationships/betaTesters`, body);
   return textResult({ betaGroupId: args.betaGroupId, added: args.betaTesterIds });
 }
 
-export async function removeTestersFromBetaGroup(args: { betaGroupId: string; betaTesterIds: string[] }): Promise<ToolResult> {
+export async function removeTestersFromBetaGroup(args: { betaGroupId: string; betaTesterIds: string[]; confirm?: boolean }): Promise<ToolResult> {
   const body = {
     data: args.betaTesterIds.map((id) => ({ id, type: 'betaTesters' })),
   };
+  if (args.confirm !== true) {
+    return textResult({ dryRun: true, action: `Remove ${args.betaTesterIds.length} tester(s) from beta group ${args.betaGroupId}`, method: 'DELETE', path: `/v1/betaGroups/${args.betaGroupId}/relationships/betaTesters`, willSend: body, note: 'Dry run — re-run with confirm:true to remove.' });
+  }
   await client.request<null>('DELETE', `/v1/betaGroups/${args.betaGroupId}/relationships/betaTesters`, body);
   return textResult({ betaGroupId: args.betaGroupId, removed: args.betaTesterIds });
 }
 
-export async function submitBuildForBetaReview(args: { buildId: string }): Promise<ToolResult> {
+export async function submitBuildForBetaReview(args: { buildId: string; confirm?: boolean }): Promise<ToolResult> {
   const body = {
     data: {
       type: 'betaAppReviewSubmissions',
@@ -145,6 +157,9 @@ export async function submitBuildForBetaReview(args: { buildId: string }): Promi
       },
     },
   };
+  if (args.confirm !== true) {
+    return textResult({ dryRun: true, action: `Submit build ${args.buildId} to Apple for TestFlight beta review`, method: 'POST', path: '/v1/betaAppReviewSubmissions', willSend: body, note: 'Dry run — re-run with confirm:true to submit.' });
+  }
   const response = await client.request<AscEnvelope<AscResource<{ betaReviewState: string; submittedDate?: string }>>>(
     'POST',
     '/v1/betaAppReviewSubmissions',
@@ -214,15 +229,16 @@ export function registerTestFlightTools(server: McpServer): void {
   server.registerTool(
     'invite_beta_tester',
     {
-      description: 'Invite a new beta tester by email. Optionally adds them to one or more beta groups or specific builds.',
+      description: 'Invite a new beta tester by email (sends a real email). Optionally adds them to one or more beta groups or specific builds. Without confirm:true this returns a dry-run preview and makes NO network call; with confirm:true it sends the invite.',
       inputSchema: {
         email: z.string().email().describe("Tester's email address"),
         firstName: z.string().optional().describe("Tester's first name"),
         lastName: z.string().optional().describe("Tester's last name"),
         betaGroupIds: z.array(z.string()).optional().describe('Beta group IDs to add the tester to'),
         buildIds: z.array(z.string()).optional().describe('Specific build IDs to grant the tester access to'),
+        confirm: schemaConfirm,
       },
-      annotations: { destructiveHint: false },
+      annotations: { destructiveHint: true },
     },
     inviteBetaTester
   );
@@ -230,8 +246,8 @@ export function registerTestFlightTools(server: McpServer): void {
   server.registerTool(
     'delete_beta_tester',
     {
-      description: 'Permanently remove a beta tester from your team.',
-      inputSchema: { betaTesterId: z.string().describe('Beta tester ID') },
+      description: 'Permanently remove a beta tester from your team. Without confirm:true this returns a dry-run preview and makes NO network call; with confirm:true it deletes.',
+      inputSchema: { betaTesterId: z.string().describe('Beta tester ID'), confirm: schemaConfirm },
       annotations: { destructiveHint: true },
     },
     deleteBetaTester
@@ -240,12 +256,13 @@ export function registerTestFlightTools(server: McpServer): void {
   server.registerTool(
     'add_testers_to_beta_group',
     {
-      description: 'Add one or more existing beta testers to a beta group.',
+      description: 'Add one or more existing beta testers to a beta group. Without confirm:true this returns a dry-run preview and makes NO network call; with confirm:true it adds them.',
       inputSchema: {
         betaGroupId: z.string().describe('Beta group ID'),
         betaTesterIds: z.array(z.string()).min(1).describe('IDs of beta testers to add'),
+        confirm: schemaConfirm,
       },
-      annotations: { destructiveHint: false },
+      annotations: { destructiveHint: true },
     },
     addTestersToBetaGroup
   );
@@ -253,10 +270,11 @@ export function registerTestFlightTools(server: McpServer): void {
   server.registerTool(
     'remove_testers_from_beta_group',
     {
-      description: 'Remove one or more beta testers from a beta group (does not delete the testers).',
+      description: 'Remove one or more beta testers from a beta group (does not delete the testers). Without confirm:true this returns a dry-run preview and makes NO network call; with confirm:true it removes them.',
       inputSchema: {
         betaGroupId: z.string().describe('Beta group ID'),
         betaTesterIds: z.array(z.string()).min(1).describe('IDs of beta testers to remove'),
+        confirm: schemaConfirm,
       },
       annotations: { destructiveHint: true },
     },
@@ -266,9 +284,9 @@ export function registerTestFlightTools(server: McpServer): void {
   server.registerTool(
     'submit_build_for_beta_review',
     {
-      description: 'Submit a build for TestFlight beta app review (required before external testing).',
-      inputSchema: { buildId: z.string().describe('Build ID to submit') },
-      annotations: { destructiveHint: false },
+      description: 'Submit a build for TestFlight beta app review (required before external testing) — submits to Apple. Without confirm:true this returns a dry-run preview and makes NO network call; with confirm:true it submits.',
+      inputSchema: { buildId: z.string().describe('Build ID to submit'), confirm: schemaConfirm },
+      annotations: { destructiveHint: true },
     },
     submitBuildForBetaReview
   );

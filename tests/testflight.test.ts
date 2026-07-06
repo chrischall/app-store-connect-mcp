@@ -79,7 +79,7 @@ describe('testflight tools', () => {
     reqSpy.mockResolvedValueOnce({
       data: { type: 'betaTesters', id: 'newid', attributes: { email: 'a@b.com', firstName: 'A', lastName: 'B', state: 'INVITED' } },
     } as never);
-    await inviteBetaTester({ email: 'a@b.com', firstName: 'A', lastName: 'B', betaGroupIds: ['g1', 'g2'], buildIds: ['b1'] });
+    await inviteBetaTester({ email: 'a@b.com', firstName: 'A', lastName: 'B', betaGroupIds: ['g1', 'g2'], buildIds: ['b1'], confirm: true });
     expect(reqSpy).toHaveBeenCalledWith(
       'POST',
       '/v1/betaTesters',
@@ -100,21 +100,21 @@ describe('testflight tools', () => {
     reqSpy.mockResolvedValueOnce({
       data: { type: 'betaTesters', id: 'x', attributes: { email: 'a@b.com' } },
     } as never);
-    await inviteBetaTester({ email: 'a@b.com' });
+    await inviteBetaTester({ email: 'a@b.com', confirm: true });
     const body = reqSpy.mock.calls[0]![2] as { data: { relationships?: unknown } };
     expect(body.data.relationships).toBeUndefined();
   });
 
   it('deleteBetaTester: DELETE /v1/betaTesters/{id}', async () => {
     reqSpy.mockResolvedValueOnce(null as never);
-    const result = await deleteBetaTester({ betaTesterId: 'tester1' });
+    const result = await deleteBetaTester({ betaTesterId: 'tester1', confirm: true });
     expect(reqSpy).toHaveBeenCalledWith('DELETE', '/v1/betaTesters/tester1');
     expect(result.content[0].text).toContain('tester1');
   });
 
   it('addTestersToBetaGroup: posts to relationship endpoint', async () => {
     reqSpy.mockResolvedValueOnce(null as never);
-    await addTestersToBetaGroup({ betaGroupId: 'g1', betaTesterIds: ['t1', 't2'] });
+    await addTestersToBetaGroup({ betaGroupId: 'g1', betaTesterIds: ['t1', 't2'], confirm: true });
     expect(reqSpy).toHaveBeenCalledWith(
       'POST',
       '/v1/betaGroups/g1/relationships/betaTesters',
@@ -124,7 +124,7 @@ describe('testflight tools', () => {
 
   it('removeTestersFromBetaGroup: deletes from relationship endpoint', async () => {
     reqSpy.mockResolvedValueOnce(null as never);
-    await removeTestersFromBetaGroup({ betaGroupId: 'g1', betaTesterIds: ['t1'] });
+    await removeTestersFromBetaGroup({ betaGroupId: 'g1', betaTesterIds: ['t1'], confirm: true });
     expect(reqSpy).toHaveBeenCalledWith(
       'DELETE',
       '/v1/betaGroups/g1/relationships/betaTesters',
@@ -136,12 +136,27 @@ describe('testflight tools', () => {
     reqSpy.mockResolvedValueOnce({
       data: { type: 'betaAppReviewSubmissions', id: 'sub1', attributes: { betaReviewState: 'WAITING_FOR_REVIEW' } },
     } as never);
-    await submitBuildForBetaReview({ buildId: 'b1' });
+    await submitBuildForBetaReview({ buildId: 'b1', confirm: true });
     expect(reqSpy).toHaveBeenCalledWith('POST', '/v1/betaAppReviewSubmissions', {
       data: {
         type: 'betaAppReviewSubmissions',
         relationships: { build: { data: { id: 'b1', type: 'builds' } } },
       },
     });
+  });
+
+  it('mutations without confirm return a dry-run preview and make NO network call', async () => {
+    for (const call of [
+      () => inviteBetaTester({ email: 'a@b.com' }),
+      () => deleteBetaTester({ betaTesterId: 't1' }),
+      () => addTestersToBetaGroup({ betaGroupId: 'g1', betaTesterIds: ['t1'] }),
+      () => removeTestersFromBetaGroup({ betaGroupId: 'g1', betaTesterIds: ['t1'] }),
+      () => submitBuildForBetaReview({ buildId: 'b1' }),
+    ]) {
+      reqSpy.mockClear();
+      const result = await call();
+      expect(reqSpy).not.toHaveBeenCalled();
+      expect(JSON.parse(result.content[0].text).dryRun).toBe(true);
+    }
   });
 });
