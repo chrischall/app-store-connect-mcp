@@ -1,14 +1,16 @@
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { readFileSync } from 'fs';
-import { createPrivateKey, sign as cryptoSign } from 'crypto';
 import {
   createApiClient,
+  createCachedTokenSource,
+  signEs256Jwt,
   formatApiError,
   loadDotenvSafely,
   readEnvVar,
   expandPath,
   type ApiClient,
+  type CachedTokenSource,
 } from '@chrischall/mcp-utils';
 import type { AscEnvelope, AscResource } from './types.js';
 
@@ -73,16 +75,6 @@ function resolvePrivateKey(): string {
   );
 }
 
-/**
- * Sign a string with ES256 (ECDSA P-256 + SHA-256) and return a base64url
- * JWS signature in IEEE P1363 (raw r||s) format — JWT spec, not DER.
- */
-export function signES256(privateKeyPem: string, payload: string): string {
-  const key = createPrivateKey({ key: privateKeyPem, format: 'pem' });
-  const sig = cryptoSign('SHA256', Buffer.from(payload), { key, dsaEncoding: 'ieee-p1363' });
-  return sig.toString('base64url');
-}
-
 export interface JwtConfig {
   keyId: string;
   issuerId: string;
@@ -92,9 +84,12 @@ export interface JwtConfig {
 /**
  * Mint an App Store Connect JWT (ES256, 20-minute lifetime).
  * https://developer.apple.com/documentation/appstoreconnectapi/generating-tokens-for-api-requests
+ *
+ * The ES256 signing (ieee-p1363 / raw r||s — the JWS format Apple requires, not
+ * DER) is delegated to mcp-utils' `signEs256Jwt`; this only computes ASC's
+ * `kid` header and `iss`/`iat`/`exp`/`aud` claims.
  */
 export function mintJwt(config: JwtConfig, now: Date = new Date()): string {
-  const header = { alg: 'ES256', kid: config.keyId, typ: 'JWT' };
   const iat = Math.floor(now.getTime() / 1000);
   const payload = {
     iss: config.issuerId,
@@ -102,23 +97,32 @@ export function mintJwt(config: JwtConfig, now: Date = new Date()): string {
     exp: iat + JWT_LIFETIME_SEC,
     aud: 'appstoreconnect-v1',
   };
-  const headerB64 = Buffer.from(JSON.stringify(header)).toString('base64url');
-  const payloadB64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
-  const data = `${headerB64}.${payloadB64}`;
-  const sigB64 = signES256(config.privateKey, data);
-  return `${data}.${sigB64}`;
+  return signEs256Jwt(config.privateKey, payload, { header: { kid: config.keyId } });
 }
 
 export class AppStoreConnectClient {
-  private cachedToken: string | null = null;
-  private cachedTokenExpiry: Date | null = null;
   private readonly api: ApiClient;
+  // Caches the minted JWT and re-mints ~2 minutes before its 20-minute expiry
+  // (single-flight; a failed mint isn't cached). Replaces the hand-rolled
+  // `{ cachedToken, cachedTokenExpiry }` pair + `ensureToken`.
+  private readonly tokenSource: CachedTokenSource;
 
   constructor() {
+    this.tokenSource = createCachedTokenSource({
+      mint: async () => {
+        const now = new Date();
+        const token = mintJwt(this.resolveJwtConfig(), now);
+        // ASC JWTs live JWT_LIFETIME_SEC from `iat`; surface that expiry so the
+        // buffer refreshes at the same moment the old expiry field did.
+        return { token, expiresAt: new Date(now.getTime() + JWT_LIFETIME_SEC * 1000) };
+      },
+      bufferMs: JWT_REFRESH_BUFFER_MS,
+    });
+
     // Shared bearer-client kit (one-shot 429 retry, 401 mapping, 204/empty
     // handling, redacted errors, per-attempt timeout). Auth is routed through a
-    // small ReactiveTokenSource adapter over the Apple-specific ES256 mint so
-    // the exact clear-cache → re-mint → replay-once-on-401 semantics survive.
+    // small ReactiveTokenSource adapter over the cached ES256 mint so the exact
+    // clear-cache → re-mint → replay-once-on-401 semantics survive.
     this.api = createApiClient({
       baseUrl: API_BASE,
       serviceName: SERVICE_NAME,
@@ -127,17 +131,26 @@ export class AppStoreConnectClient {
     });
   }
 
+  /** Read + validate the ASC key/issuer/private-key env, throwing if unset. */
+  private resolveJwtConfig(): JwtConfig {
+    const keyId = readVar('APP_STORE_CONNECT_KEY_ID');
+    const issuerId = readVar('APP_STORE_CONNECT_ISSUER_ID');
+    if (!keyId) throw new Error('APP_STORE_CONNECT_KEY_ID must be set');
+    if (!issuerId) throw new Error('APP_STORE_CONNECT_ISSUER_ID must be set');
+    const privateKey = resolvePrivateKey();
+    return { keyId, issuerId, privateKey };
+  }
+
   /**
-   * Run `call` with a freshly-ensured JWT; on a 401, clear the cached token,
-   * re-mint, and replay exactly once. A second 401 surfaces through the shared
-   * client's unauthorized mapping.
+   * Run `call` with a currently-valid JWT; on a 401, invalidate the cached
+   * token, re-mint, and replay exactly once. A second 401 surfaces through the
+   * shared client's unauthorized mapping.
    */
   private async withAuth(call: (accessToken: string) => Promise<Response>): Promise<Response> {
-    const first = await call(this.ensureToken());
+    const first = await call(await this.tokenSource.getToken());
     if (first.status !== 401) return first;
-    this.cachedToken = null;
-    this.cachedTokenExpiry = null;
-    return call(this.ensureToken());
+    this.tokenSource.invalidate();
+    return call(await this.tokenSource.getToken());
   }
 
   /**
@@ -179,24 +192,6 @@ export class AppStoreConnectClient {
     }
     const arrayBuffer = await response.arrayBuffer();
     return { buffer: Buffer.from(arrayBuffer), contentType: response.headers.get('content-type') };
-  }
-
-  private ensureToken(): string {
-    if (this.cachedToken && this.cachedTokenExpiry) {
-      if (this.cachedTokenExpiry.getTime() - Date.now() > JWT_REFRESH_BUFFER_MS) {
-        return this.cachedToken;
-      }
-    }
-    const keyId = readVar('APP_STORE_CONNECT_KEY_ID');
-    const issuerId = readVar('APP_STORE_CONNECT_ISSUER_ID');
-    if (!keyId) throw new Error('APP_STORE_CONNECT_KEY_ID must be set');
-    if (!issuerId) throw new Error('APP_STORE_CONNECT_ISSUER_ID must be set');
-    const privateKey = resolvePrivateKey();
-
-    const now = new Date();
-    this.cachedToken = mintJwt({ keyId, issuerId, privateKey }, now);
-    this.cachedTokenExpiry = new Date(now.getTime() + JWT_LIFETIME_SEC * 1000);
-    return this.cachedToken;
   }
 }
 
