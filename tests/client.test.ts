@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { generateKeyPairSync, createPublicKey, createVerify } from 'crypto';
-import { AppStoreConnectClient, mintJwt, signES256, buildUrl } from '../src/client.js';
+import { AppStoreConnectClient, mintJwt, buildUrl } from '../src/client.js';
 
 function generateP256Pem(): { privatePem: string; publicPem: string } {
   const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
@@ -55,11 +55,15 @@ describe('signES256 + mintJwt', () => {
     expect(ok).toBe(true);
   });
 
-  it('signES256 returns a 64-byte (P1363) signature for P-256 keys', () => {
+  it('mints a JWT whose signature is a 64-byte (P1363) ES256 signature', () => {
+    // The signing is now delegated to mcp-utils' signEs256Jwt (ieee-p1363);
+    // assert the guarantee through the public mint surface: the third JWS
+    // segment decodes to the raw r||s (64-byte) form the JWT spec requires,
+    // never the longer DER encoding.
     const { privatePem } = generateP256Pem();
-    const sig = signES256(privatePem, 'hello.world');
-    const decoded = Buffer.from(sig, 'base64url');
-    expect(decoded.length).toBe(64);
+    const token = mintJwt({ keyId: 'ABC123', issuerId: 'issuer', privateKey: privatePem });
+    const sigB64 = token.split('.')[2]!;
+    expect(Buffer.from(sigB64, 'base64url').length).toBe(64);
   });
 });
 
@@ -164,6 +168,30 @@ describe('AppStoreConnectClient.request', () => {
     const auth1 = (fetchMock.mock.calls[0]![1] as RequestInit).headers as Record<string, string>;
     const auth2 = (fetchMock.mock.calls[1]![1] as RequestInit).headers as Record<string, string>;
     expect(auth1.authorization).toBe(auth2.authorization);
+  });
+
+  it('re-mints once the cached token is within 2 minutes of its 20-minute expiry', async () => {
+    vi.useFakeTimers();
+    try {
+      fetchMock.mockResolvedValue(makeResponse({ data: [] }));
+      const c = new AppStoreConnectClient();
+      await c.request('GET', '/v1/apps');
+      // 17m40s later the token still has >2min of life — served from cache.
+      vi.advanceTimersByTime(17 * 60 * 1000 + 40 * 1000);
+      await c.request('GET', '/v1/apps');
+      // Past the 18-min mark (<2min remaining) — the buffer forces a fresh mint.
+      vi.advanceTimersByTime(40 * 1000);
+      await c.request('GET', '/v1/apps');
+
+      const auth = (i: number) => {
+        const h = (fetchMock.mock.calls[i]![1] as RequestInit).headers as Record<string, string>;
+        return h.Authorization ?? h.authorization;
+      };
+      expect(auth(0)).toBe(auth(1)); // cached
+      expect(auth(2)).not.toBe(auth(1)); // re-minted after crossing the buffer
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('re-mints token and retries once on 401', async () => {
