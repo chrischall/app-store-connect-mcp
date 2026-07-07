@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.2.2](https://github.com/chrischall/app-store-connect-mcp/compare/v0.2.1...v0.2.2) (2026-07-07)
+
+
+### Bug Fixes
+
+* bump @chrischall/mcp-utils to 0.12.0 ([#28](https://github.com/chrischall/app-store-connect-mcp/issues/28)) ([500cf10](https://github.com/chrischall/app-store-connect-mcp/commit/500cf10e3aa2feab7cf6724ba0d5bdb1cfcabd62))
+* confirm-gate destructive and public App Store Connect mutations ([#25](https://github.com/chrischall/app-store-connect-mcp/issues/25)) ([b31c2de](https://github.com/chrischall/app-store-connect-mcp/commit/b31c2debcb34d4f23d324d99a0baa815ef47f504))
+
+
+### Refactor
+
+* adopt mcp-utils createCachedTokenSource + signEs256Jwt ([#27](https://github.com/chrischall/app-store-connect-mcp/issues/27)) ([efc0f95](https://github.com/chrischall/app-store-connect-mcp/commit/efc0f9549881f10040c5550f4d94d53a3836eac7))
+
+
+### Documentation
+
+* document first-party dependency-bump label exception ([#29](https://github.com/chrischall/app-store-connect-mcp/issues/29)) ([4e895a7](https://github.com/chrischall/app-store-connect-mcp/commit/4e895a70a47b0ffc5b957c89c4713fb9f6b6619a))
+
 ## [0.2.1](https://github.com/chrischall/app-store-connect-mcp/compare/v0.2.0...v0.2.1) (2026-06-30)
 
 
