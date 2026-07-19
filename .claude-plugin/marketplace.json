@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "App Store Connect tools for Claude Code",
-    "version": "0.2.2"
+    "version": "0.2.3"
   },
   "plugins": [
     {
@@ -15,7 +15,7 @@
       "displayName": "App Store Connect",
       "source": "./",
       "description": "App Store Connect tools for Claude — apps, TestFlight, customer reviews, sales/finance reports, and team users via MCP",
-      "version": "0.2.2",
+      "version": "0.2.3",
       "author": {
         "name": "Chris Chall"
       },
