@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.3](https://github.com/chrischall/app-store-connect-mcp/compare/v0.2.2...v0.2.3) (2026-07-19)
+
+
+### Documentation
+
+* replace duplicated fleet policy with a pointer ([#34](https://github.com/chrischall/app-store-connect-mcp/issues/34)) ([be5ed11](https://github.com/chrischall/app-store-connect-mcp/commit/be5ed11b9d36d3e80f3d09b27540961179b46570))
+
 ## [0.2.2](https://github.com/chrischall/app-store-connect-mcp/compare/v0.2.1...v0.2.2) (2026-07-07)
 
 
