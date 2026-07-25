@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.4](https://github.com/chrischall/app-store-connect-mcp/compare/v0.2.3...v0.2.4) (2026-07-25)
+
+
+### Bug Fixes
+
+* **deps:** bump fast-uri out of the host-confusion advisories ([#39](https://github.com/chrischall/app-store-connect-mcp/issues/39)) ([40bd8b9](https://github.com/chrischall/app-store-connect-mcp/commit/40bd8b939ca88ddfc8398b9cc53e0db8a72515ae))
+
 ## [0.2.3](https://github.com/chrischall/app-store-connect-mcp/compare/v0.2.2...v0.2.3) (2026-07-19)
 
 
