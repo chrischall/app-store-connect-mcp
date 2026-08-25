@@ -30,4 +30,3 @@ egress:
   allow:
     # Only hosts the SERVER process actually fetches.
     - api.appstoreconnect.apple.com
-    - appstoreconnect.apple.com
