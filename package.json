@@ -1,6 +1,6 @@
 {
   "name": "app-store-connect-mcp",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "mcpName": "io.github.chrischall/app-store-connect-mcp",
   "description": "App Store Connect MCP server for Claude — apps, TestFlight, customer reviews, sales reports, and team users",
   "author": "Claude Code (AI) <https://www.anthropic.com/claude>",
