@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.5](https://github.com/chrischall/app-store-connect-mcp/compare/v0.2.4...v0.2.5) (2026-08-26)
+
+
+### Bug Fixes
+
+* drop appstoreconnect.apple.com from the mint.yaml egress allowlist ([#56](https://github.com/chrischall/app-store-connect-mcp/issues/56)) ([61c562e](https://github.com/chrischall/app-store-connect-mcp/commit/61c562e12d13d555a10a263ad0a18b7bd4a60b7d)), closes [#53](https://github.com/chrischall/app-store-connect-mcp/issues/53)
+
 ## [0.2.4](https://github.com/chrischall/app-store-connect-mcp/compare/v0.2.3...v0.2.4) (2026-07-25)
 
 
