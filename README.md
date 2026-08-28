@@ -33,7 +33,7 @@ Ask Claude things like:
 ### Option A — npm
 
 ```bash
-npx -y app-store-connect-mcp
+npx -y @chrischall/app-store-connect-mcp
 ```
 
 Add to your Claude config (`.mcp.json` or Claude Desktop config):
@@ -43,7 +43,7 @@ Add to your Claude config (`.mcp.json` or Claude Desktop config):
   "mcpServers": {
     "app-store-connect": {
       "command": "npx",
-      "args": ["-y", "app-store-connect-mcp"],
+      "args": ["-y", "@chrischall/app-store-connect-mcp"],
       "env": {
         "APP_STORE_CONNECT_KEY_ID": "ABC1234567",
         "APP_STORE_CONNECT_ISSUER_ID": "57246542-96fe-1a63-e053-0824d011072a",
