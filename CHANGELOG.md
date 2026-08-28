@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.6](https://github.com/chrischall/app-store-connect-mcp/compare/v0.2.5...v0.2.6) (2026-08-28)
+
+
+### Bug Fixes
+
+* publish under the [@chrischall](https://github.com/chrischall) scope so npm accepts the package ([#60](https://github.com/chrischall/app-store-connect-mcp/issues/60)) ([7406a3d](https://github.com/chrischall/app-store-connect-mcp/commit/7406a3d6fd5656d2ed04ea0dde50995961b07917))
+
 ## [0.2.5](https://github.com/chrischall/app-store-connect-mcp/compare/v0.2.4...v0.2.5) (2026-08-26)
 
 
