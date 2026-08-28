@@ -10,7 +10,7 @@
   "packages": [
     {
       "registryType": "npm",
-      "identifier": "app-store-connect-mcp",
+      "identifier": "@chrischall/app-store-connect-mcp",
       "version": "0.2.5",
       "transport": {
         "type": "stdio"
