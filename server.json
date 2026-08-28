@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.chrischall/app-store-connect-mcp",
-  "description": "App Store Connect MCP server for Claude — apps, TestFlight, customer reviews, sales reports, and team users",
+  "description": "App Store Connect MCP: apps, TestFlight, reviews, sales reports, and team users.",
   "repository": {
     "url": "https://github.com/chrischall/app-store-connect-mcp",
     "source": "github"
