@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.7](https://github.com/chrischall/app-store-connect-mcp/compare/v0.2.6...v0.2.7) (2026-08-28)
+
+
+### Bug Fixes
+
+* shorten the server.json description so the MCP registry accepts it ([#62](https://github.com/chrischall/app-store-connect-mcp/issues/62)) ([5ffc912](https://github.com/chrischall/app-store-connect-mcp/commit/5ffc912bec56d0656e73450337d8512f2ea6f62d))
+
 ## [0.2.6](https://github.com/chrischall/app-store-connect-mcp/compare/v0.2.5...v0.2.6) (2026-08-28)
 
 
