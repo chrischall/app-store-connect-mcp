@@ -5,6 +5,7 @@ import { registerTestFlightTools } from './tools/testflight.js';
 import { registerReviewTools } from './tools/reviews.js';
 import { registerSalesTools } from './tools/sales.js';
 import { registerUserTools } from './tools/users.js';
+import { registerHealthcheckTools } from './tools/health.js';
 
 // The App Store Connect client is a module-level singleton (imported by each
 // tool module) that mints its JWT lazily on the first request. That preserves
@@ -22,5 +23,6 @@ await runMcp({
     registerReviewTools,
     registerSalesTools,
     registerUserTools,
+    registerHealthcheckTools,
   ],
 });
