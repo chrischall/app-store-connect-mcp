@@ -5,7 +5,7 @@ description: This skill should be used when the user asks about App Store Connec
 
 # app-store-connect-mcp
 
-MCP server for App Store Connect — 21 tools covering apps, TestFlight, customer reviews, sales/finance reports, and team users via the [App Store Connect API](https://developer.apple.com/documentation/appstoreconnectapi).
+MCP server for App Store Connect — 22 tools covering apps, TestFlight, customer reviews, sales/finance reports, team users, and a credential healthcheck via the [App Store Connect API](https://developer.apple.com/documentation/appstoreconnectapi).
 
 ## Setup
 
@@ -49,6 +49,9 @@ Generate a key at [appstoreconnect.apple.com → Users and Access → Integratio
 - `list_users` — Team users
 - `list_user_invitations` — Pending invitations
 - `invite_user` — Invite new team member with roles
+
+### Health
+- `asc_healthcheck` — Is this connector working? Reports which of the three key settings resolved, whether App Store Connect accepted the signed JWT, and what to fix. Start here when another tool fails: a 401 here means a revoked key, a key/issuer team mismatch, or local clock drift — never a wrong password.
 
 ## Common workflows
 

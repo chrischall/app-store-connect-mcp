@@ -37,6 +37,9 @@ MCP server for App Store Connect — apps, TestFlight, customer reviews, sales/f
 ### Team Users
 - `list_users`, `list_user_invitations`, `invite_user`
 
+### Health
+- `asc_healthcheck` — Is this connector working? Reports which of the three key settings resolved, whether App Store Connect accepted the signed JWT, and what to fix. Start here when another tool fails: a 401 here means a revoked key, a key/issuer team mismatch, or local clock drift — never a wrong password.
+
 ## Setup
 
 Generate an App Store Connect API key at [appstoreconnect.apple.com → Users and Access → Integrations](https://appstoreconnect.apple.com/access/integrations/api). Set:
