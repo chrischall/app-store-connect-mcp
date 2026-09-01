@@ -149,6 +149,10 @@
     {
       "name": "invite_user",
       "description": "Invite a new user to your team"
+    },
+    {
+      "name": "asc_healthcheck",
+      "description": "Resolves the credential the way real tools do, then makes one authenticated request to api.appstoreconnect.apple.com. Reports which source supplied the credential, whether api.appstoreconnect.apple.com accepted it, the round-trip time, and a plain-English hint distinguishing 'no credential' from 'credential rejected' from a 'api.appstoreconnect.apple.com-side problem'. Call this when a real tool fails and you want to know which hop broke. Read-only; never returns the credential itself."
     }
   ],
   "compatibility": {
