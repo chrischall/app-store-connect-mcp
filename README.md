@@ -118,6 +118,7 @@ The key signs short-lived (20-minute) ES256 JWTs on demand. No external token st
 | `list_users` | App Store Connect team users |
 | `list_user_invitations` | Pending team invitations |
 | `invite_user` | Invite a new team member with roles |
+| `asc_healthcheck` | Verify credentials and upstream reachability; reports failures as data, not exceptions |
 
 ## Environment
 
