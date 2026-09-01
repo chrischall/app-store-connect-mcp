@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.0](https://github.com/chrischall/app-store-connect-mcp/compare/v0.2.7...v0.3.0) (2026-09-01)
+
+
+### Features
+
+* **health:** add asc_healthcheck ([#69](https://github.com/chrischall/app-store-connect-mcp/issues/69)) ([65136e8](https://github.com/chrischall/app-store-connect-mcp/commit/65136e83b11e74a675250ae9d92b0f1ba87285fc))
+
+
+### Documentation
+
+* **health:** add asc_healthcheck to both SKILL.md files ([#74](https://github.com/chrischall/app-store-connect-mcp/issues/74)) ([bc9bafe](https://github.com/chrischall/app-store-connect-mcp/commit/bc9bafe2628977c0e2906479b2ba9bda0ed513cd)), closes [#73](https://github.com/chrischall/app-store-connect-mcp/issues/73)
+* **health:** list asc_healthcheck in manifest.json and the tool docs ([#72](https://github.com/chrischall/app-store-connect-mcp/issues/72)) ([4e99fda](https://github.com/chrischall/app-store-connect-mcp/commit/4e99fdacaa4fbf31dfcfe7f1b85719852a74993b))
+
 ## [0.2.7](https://github.com/chrischall/app-store-connect-mcp/compare/v0.2.6...v0.2.7) (2026-08-28)
 
 
