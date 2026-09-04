@@ -2,7 +2,7 @@
   "name": "@chrischall/app-store-connect-mcp",
   "version": "0.3.0",
   "mcpName": "io.github.chrischall/app-store-connect-mcp",
-  "description": "App Store Connect MCP server for Claude — apps, TestFlight, customer reviews, sales reports, and team users",
+  "description": "App Store Connect MCP server for Claude \u2014 apps, TestFlight, customer reviews, sales reports, and team users",
   "author": "Claude Code (AI) <https://www.anthropic.com/claude>",
   "repository": {
     "type": "git",
@@ -47,7 +47,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@chrischall/mcp-utils": "^0.19.3",
+    "@chrischall/mcp-utils": "^0.23.0",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "dotenv": "^17.4.0",
     "zod": "^4.4.2"

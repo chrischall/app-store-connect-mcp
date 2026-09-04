@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { gunzipSync } from 'zlib';
-import { textResult } from '@chrischall/mcp-utils';
+import { minifiedResult } from '@chrischall/mcp-utils';
 import { client } from '../client.js';
 import { ToolResult } from '../types.js';
 
@@ -46,7 +46,7 @@ export async function downloadSalesReport(args: {
   const limit = args.limit ?? 500;
   const truncated = rows.length > limit;
   const preview = truncated ? rows.slice(0, limit) : rows;
-  return textResult({
+  return minifiedResult({
     reportDate: args.reportDate,
     frequency: args.frequency ?? 'DAILY',
     reportType: args.reportType ?? 'SALES',
@@ -74,7 +74,7 @@ export async function downloadFinanceReport(args: {
   const limit = args.limit ?? 500;
   const truncated = rows.length > limit;
   const preview = truncated ? rows.slice(0, limit) : rows;
-  return textResult({
+  return minifiedResult({
     reportDate: args.reportDate,
     regionCode: args.regionCode,
     reportType: args.reportType ?? 'FINANCIAL',

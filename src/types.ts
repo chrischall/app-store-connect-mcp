@@ -20,6 +20,6 @@ export interface AscResource<TAttrs = Record<string, unknown>, TRels = Record<st
 /**
  * Standard MCP tool return type.
  * Re-exported from the shared SDK type so tool handlers can return the
- * results produced by `@chrischall/mcp-utils`' `textResult` helper.
+ * results produced by `@chrischall/mcp-utils`' `minifiedResult` helper.
  */
 export type { CallToolResult as ToolResult } from '@modelcontextprotocol/sdk/types.js';
