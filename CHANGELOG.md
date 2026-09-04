@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.4.0](https://github.com/chrischall/app-store-connect-mcp/compare/v0.3.0...v0.4.0) (2026-09-04)
+
+
+### Features
+
+* **tools:** compact by default — strip media URLs, and minify every response ([#82](https://github.com/chrischall/app-store-connect-mcp/issues/82)) ([a20195b](https://github.com/chrischall/app-store-connect-mcp/commit/a20195bd4c8099c5f100e67b029011a36f01ab27))
+
+
+### Bug Fixes
+
+* **build:** restore the literal em dash in the package description ([#85](https://github.com/chrischall/app-store-connect-mcp/issues/85)) ([51fdfac](https://github.com/chrischall/app-store-connect-mcp/commit/51fdfacc98c10112f0a9d2504858a0c15149b152))
+
+
+### Refactor
+
+* **tools:** drop the unused view module ([#86](https://github.com/chrischall/app-store-connect-mcp/issues/86)) ([2a410cb](https://github.com/chrischall/app-store-connect-mcp/commit/2a410cb189a3f89367a072efaea187e54f95bcb9))
+
 ## [0.3.0](https://github.com/chrischall/app-store-connect-mcp/compare/v0.2.7...v0.3.0) (2026-09-01)
 
 
