@@ -14,7 +14,7 @@ import { registerHealthcheckTools } from './tools/health.js';
 // — the configuration error only surfaces on the first tool call.
 await runMcp({
   name: 'app-store-connect-mcp',
-  version: '0.3.0', // x-release-please-version
+  version: '0.4.0', // x-release-please-version
   banner:
     '[app-store-connect-mcp] This project was developed and is maintained by AI (Claude). Use at your own discretion.',
   tools: [
