@@ -5,7 +5,7 @@
 
 ### Features
 
-* **tools:** compact by default — strip media URLs, and minify every response ([#82](https://github.com/chrischall/app-store-connect-mcp/issues/82)) ([a20195b](https://github.com/chrischall/app-store-connect-mcp/commit/a20195bd4c8099c5f100e67b029011a36f01ab27))
+* **tools:** minify every response — no formatting whitespace on any payload ([#82](https://github.com/chrischall/app-store-connect-mcp/issues/82)) ([a20195b](https://github.com/chrischall/app-store-connect-mcp/commit/a20195bd4c8099c5f100e67b029011a36f01ab27))
 
 
 ### Bug Fixes
