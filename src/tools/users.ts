@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { textResult, schemaConfirm } from '@chrischall/mcp-utils';
+import { minifiedResult, schemaConfirm } from '@chrischall/mcp-utils';
 import { client, paginate, pageSize, paginateOpts } from '../client.js';
 import { AscEnvelope, AscResource, ToolResult } from '../types.js';
 
@@ -53,7 +53,7 @@ export async function listUsers(args: { limit?: number; username?: string; roles
     roles: r.attributes?.roles,
     allAppsVisible: r.attributes?.allAppsVisible,
   }));
-  return textResult({ count: users.length, users, pagination });
+  return minifiedResult({ count: users.length, users, pagination });
 }
 
 export async function listUserInvitations(args: { limit?: number; email?: string; auto_paginate?: boolean } = {}): Promise<ToolResult> {
@@ -74,7 +74,7 @@ export async function listUserInvitations(args: { limit?: number; email?: string
     roles: r.attributes?.roles,
     allAppsVisible: r.attributes?.allAppsVisible,
   }));
-  return textResult({ count: invitations.length, invitations, pagination });
+  return minifiedResult({ count: invitations.length, invitations, pagination });
 }
 
 export async function inviteUser(args: {
@@ -106,7 +106,7 @@ export async function inviteUser(args: {
     },
   };
   if (args.confirm !== true) {
-    return textResult({
+    return minifiedResult({
       dryRun: true,
       action: `Invite ${args.email} to your App Store Connect team with roles [${args.roles.join(', ')}] (sends a real email; roles can include ADMIN)`,
       method: 'POST',
@@ -116,7 +116,7 @@ export async function inviteUser(args: {
     });
   }
   const response = await client.request<AscEnvelope<AscResource<UserInvitationAttrs>>>('POST', '/v1/userInvitations', body);
-  return textResult({ id: response.data.id, ...response.data.attributes });
+  return minifiedResult({ id: response.data.id, ...response.data.attributes });
 }
 
 export function registerUserTools(server: McpServer): void {

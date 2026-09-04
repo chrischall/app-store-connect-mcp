@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { textResult } from '@chrischall/mcp-utils';
+import { minifiedResult } from '@chrischall/mcp-utils';
 import { client, paginate, pageSize, paginateOpts } from '../client.js';
 import { AscEnvelope, AscResource, ToolResult } from '../types.js';
 
@@ -48,12 +48,12 @@ export async function listApps(args: { limit?: number; bundleId?: string; name?:
     paginateOpts(args, 50)
   );
   const apps = items.map(compactApp);
-  return textResult({ count: apps.length, apps, pagination });
+  return minifiedResult({ count: apps.length, apps, pagination });
 }
 
 export async function getApp(args: { appId: string }): Promise<ToolResult> {
   const response = await client.request<AscEnvelope<AscResource<AppAttrs>>>('GET', `/v1/apps/${args.appId}`);
-  return textResult({ id: response.data.id, ...response.data.attributes });
+  return minifiedResult({ id: response.data.id, ...response.data.attributes });
 }
 
 export async function listAppStoreVersions(args: { appId: string; limit?: number; platform?: string; appStoreState?: string; auto_paginate?: boolean }): Promise<ToolResult> {
@@ -74,13 +74,13 @@ export async function listAppStoreVersions(args: { appId: string; limit?: number
     releaseType: r.attributes?.releaseType,
     createdDate: r.attributes?.createdDate,
   }));
-  return textResult({ count: versions.length, versions, pagination });
+  return minifiedResult({ count: versions.length, versions, pagination });
 }
 
 export async function getAppInfos(args: { appId: string }): Promise<ToolResult> {
   const response = await client.request<AscEnvelope<AscResource<AppInfoAttrs>[]>>('GET', `/v1/apps/${args.appId}/appInfos`);
   const infos = response.data.map((r) => ({ id: r.id, ...r.attributes }));
-  return textResult({ count: infos.length, infos });
+  return minifiedResult({ count: infos.length, infos });
 }
 
 export function registerAppTools(server: McpServer): void {

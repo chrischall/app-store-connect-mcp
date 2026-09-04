@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { textResult, schemaConfirm } from '@chrischall/mcp-utils';
+import { minifiedResult, schemaConfirm } from '@chrischall/mcp-utils';
 import { client, paginate, pageSize, paginateOpts } from '../client.js';
 import { AscEnvelope, AscResource, ToolResult } from '../types.js';
 
@@ -40,7 +40,7 @@ export async function listCustomerReviews(args: { appId: string; limit?: number;
     createdDate: r.attributes?.createdDate,
     territory: r.attributes?.territory,
   }));
-  return textResult({ count: reviews.length, reviews, pagination });
+  return minifiedResult({ count: reviews.length, reviews, pagination });
 }
 
 export async function getCustomerReview(args: { reviewId: string }): Promise<ToolResult> {
@@ -50,7 +50,7 @@ export async function getCustomerReview(args: { reviewId: string }): Promise<Too
     undefined,
     { include: 'response' }
   );
-  return textResult({ id: response.data.id, ...response.data.attributes, included: response.included });
+  return minifiedResult({ id: response.data.id, ...response.data.attributes, included: response.included });
 }
 
 export async function respondToReview(args: { reviewId: string; responseBody: string; confirm?: boolean }): Promise<ToolResult> {
@@ -62,7 +62,7 @@ export async function respondToReview(args: { reviewId: string; responseBody: st
     },
   };
   if (args.confirm !== true) {
-    return textResult({
+    return minifiedResult({
       dryRun: true,
       action: 'Post a PUBLIC developer response to a customer review',
       method: 'POST',
@@ -72,7 +72,7 @@ export async function respondToReview(args: { reviewId: string; responseBody: st
     });
   }
   const response = await client.request<AscEnvelope<AscResource<ReviewResponseAttrs>>>('POST', '/v1/customerReviewResponses', body);
-  return textResult({ id: response.data.id, ...response.data.attributes });
+  return minifiedResult({ id: response.data.id, ...response.data.attributes });
 }
 
 export function registerReviewTools(server: McpServer): void {

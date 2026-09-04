@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { textResult, schemaConfirm } from '@chrischall/mcp-utils';
+import { minifiedResult, schemaConfirm } from '@chrischall/mcp-utils';
 import { client, paginate, pageSize, paginateOpts } from '../client.js';
 import { AscEnvelope, AscResource, ToolResult } from '../types.js';
 
@@ -49,12 +49,12 @@ export async function listBuilds(args: { appId?: string; limit?: number; process
     expirationDate: r.attributes?.expirationDate,
     minOsVersion: r.attributes?.minOsVersion,
   }));
-  return textResult({ count: builds.length, builds, pagination });
+  return minifiedResult({ count: builds.length, builds, pagination });
 }
 
 export async function getBuild(args: { buildId: string }): Promise<ToolResult> {
   const response = await client.request<AscEnvelope<AscResource<BuildAttrs>>>('GET', `/v1/builds/${args.buildId}`);
-  return textResult({ id: response.data.id, ...response.data.attributes });
+  return minifiedResult({ id: response.data.id, ...response.data.attributes });
 }
 
 export async function listBetaGroups(args: { appId?: string; limit?: number; isInternalGroup?: boolean; auto_paginate?: boolean } = {}): Promise<ToolResult> {
@@ -71,7 +71,7 @@ export async function listBetaGroups(args: { appId?: string; limit?: number; isI
     publicLinkEnabled: r.attributes?.publicLinkEnabled,
     createdDate: r.attributes?.createdDate,
   }));
-  return textResult({ count: groups.length, groups, pagination });
+  return minifiedResult({ count: groups.length, groups, pagination });
 }
 
 export async function listBetaTesters(args: { appId?: string; betaGroupId?: string; email?: string; limit?: number; auto_paginate?: boolean } = {}): Promise<ToolResult> {
@@ -89,7 +89,7 @@ export async function listBetaTesters(args: { appId?: string; betaGroupId?: stri
     state: r.attributes?.state,
     inviteType: r.attributes?.inviteType,
   }));
-  return textResult({ count: testers.length, testers, pagination });
+  return minifiedResult({ count: testers.length, testers, pagination });
 }
 
 export async function inviteBetaTester(args: { email: string; firstName?: string; lastName?: string; betaGroupIds?: string[]; buildIds?: string[]; confirm?: boolean }): Promise<ToolResult> {
@@ -112,18 +112,18 @@ export async function inviteBetaTester(args: { email: string; firstName?: string
     },
   };
   if (args.confirm !== true) {
-    return textResult({ dryRun: true, action: `Invite beta tester ${args.email} (sends a real email)`, method: 'POST', path: '/v1/betaTesters', willSend: body, note: 'Dry run — re-run with confirm:true to invite.' });
+    return minifiedResult({ dryRun: true, action: `Invite beta tester ${args.email} (sends a real email)`, method: 'POST', path: '/v1/betaTesters', willSend: body, note: 'Dry run — re-run with confirm:true to invite.' });
   }
   const response = await client.request<AscEnvelope<AscResource<BetaTesterAttrs>>>('POST', '/v1/betaTesters', body);
-  return textResult({ id: response.data.id, ...response.data.attributes });
+  return minifiedResult({ id: response.data.id, ...response.data.attributes });
 }
 
 export async function deleteBetaTester(args: { betaTesterId: string; confirm?: boolean }): Promise<ToolResult> {
   if (args.confirm !== true) {
-    return textResult({ dryRun: true, action: 'Permanently remove a beta tester from your team', method: 'DELETE', path: `/v1/betaTesters/${args.betaTesterId}`, note: 'Dry run — re-run with confirm:true to delete.' });
+    return minifiedResult({ dryRun: true, action: 'Permanently remove a beta tester from your team', method: 'DELETE', path: `/v1/betaTesters/${args.betaTesterId}`, note: 'Dry run — re-run with confirm:true to delete.' });
   }
   await client.request<null>('DELETE', `/v1/betaTesters/${args.betaTesterId}`);
-  return textResult({ deleted: args.betaTesterId });
+  return minifiedResult({ deleted: args.betaTesterId });
 }
 
 export async function addTestersToBetaGroup(args: { betaGroupId: string; betaTesterIds: string[]; confirm?: boolean }): Promise<ToolResult> {
@@ -131,10 +131,10 @@ export async function addTestersToBetaGroup(args: { betaGroupId: string; betaTes
     data: args.betaTesterIds.map((id) => ({ id, type: 'betaTesters' })),
   };
   if (args.confirm !== true) {
-    return textResult({ dryRun: true, action: `Add ${args.betaTesterIds.length} tester(s) to beta group ${args.betaGroupId}`, method: 'POST', path: `/v1/betaGroups/${args.betaGroupId}/relationships/betaTesters`, willSend: body, note: 'Dry run — re-run with confirm:true to add.' });
+    return minifiedResult({ dryRun: true, action: `Add ${args.betaTesterIds.length} tester(s) to beta group ${args.betaGroupId}`, method: 'POST', path: `/v1/betaGroups/${args.betaGroupId}/relationships/betaTesters`, willSend: body, note: 'Dry run — re-run with confirm:true to add.' });
   }
   await client.request<null>('POST', `/v1/betaGroups/${args.betaGroupId}/relationships/betaTesters`, body);
-  return textResult({ betaGroupId: args.betaGroupId, added: args.betaTesterIds });
+  return minifiedResult({ betaGroupId: args.betaGroupId, added: args.betaTesterIds });
 }
 
 export async function removeTestersFromBetaGroup(args: { betaGroupId: string; betaTesterIds: string[]; confirm?: boolean }): Promise<ToolResult> {
@@ -142,10 +142,10 @@ export async function removeTestersFromBetaGroup(args: { betaGroupId: string; be
     data: args.betaTesterIds.map((id) => ({ id, type: 'betaTesters' })),
   };
   if (args.confirm !== true) {
-    return textResult({ dryRun: true, action: `Remove ${args.betaTesterIds.length} tester(s) from beta group ${args.betaGroupId}`, method: 'DELETE', path: `/v1/betaGroups/${args.betaGroupId}/relationships/betaTesters`, willSend: body, note: 'Dry run — re-run with confirm:true to remove.' });
+    return minifiedResult({ dryRun: true, action: `Remove ${args.betaTesterIds.length} tester(s) from beta group ${args.betaGroupId}`, method: 'DELETE', path: `/v1/betaGroups/${args.betaGroupId}/relationships/betaTesters`, willSend: body, note: 'Dry run — re-run with confirm:true to remove.' });
   }
   await client.request<null>('DELETE', `/v1/betaGroups/${args.betaGroupId}/relationships/betaTesters`, body);
-  return textResult({ betaGroupId: args.betaGroupId, removed: args.betaTesterIds });
+  return minifiedResult({ betaGroupId: args.betaGroupId, removed: args.betaTesterIds });
 }
 
 export async function submitBuildForBetaReview(args: { buildId: string; confirm?: boolean }): Promise<ToolResult> {
@@ -158,14 +158,14 @@ export async function submitBuildForBetaReview(args: { buildId: string; confirm?
     },
   };
   if (args.confirm !== true) {
-    return textResult({ dryRun: true, action: `Submit build ${args.buildId} to Apple for TestFlight beta review`, method: 'POST', path: '/v1/betaAppReviewSubmissions', willSend: body, note: 'Dry run — re-run with confirm:true to submit.' });
+    return minifiedResult({ dryRun: true, action: `Submit build ${args.buildId} to Apple for TestFlight beta review`, method: 'POST', path: '/v1/betaAppReviewSubmissions', willSend: body, note: 'Dry run — re-run with confirm:true to submit.' });
   }
   const response = await client.request<AscEnvelope<AscResource<{ betaReviewState: string; submittedDate?: string }>>>(
     'POST',
     '/v1/betaAppReviewSubmissions',
     body
   );
-  return textResult({ id: response.data.id, ...response.data.attributes });
+  return minifiedResult({ id: response.data.id, ...response.data.attributes });
 }
 
 export function registerTestFlightTools(server: McpServer): void {
