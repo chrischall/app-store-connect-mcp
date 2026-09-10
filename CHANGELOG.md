@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.4.1](https://github.com/chrischall/app-store-connect-mcp/compare/v0.4.0...v0.4.1) (2026-09-10)
+
+
+### Bug Fixes
+
+* **deps:** @chrischall/mcp-utils 0.26.1 ([#94](https://github.com/chrischall/app-store-connect-mcp/issues/94)) ([8417cb3](https://github.com/chrischall/app-store-connect-mcp/commit/8417cb33ffba3cb6d03e1ad0193b642a1a16d90c))
+* **deps:** Bump hono from 4.13.0 to 4.13.7 ([#92](https://github.com/chrischall/app-store-connect-mcp/issues/92)) ([8df3a8a](https://github.com/chrischall/app-store-connect-mcp/commit/8df3a8a83c88e3c576483d0fd888e582fec9ef1e))
+* **deps:** declare the peer floors mcp-utils 0.26.1 requires ([#95](https://github.com/chrischall/app-store-connect-mcp/issues/95)) ([a3c77d8](https://github.com/chrischall/app-store-connect-mcp/commit/a3c77d82609b635c320d180836efc32e04c017d1))
+
 ## [0.4.0](https://github.com/chrischall/app-store-connect-mcp/compare/v0.3.0...v0.4.0) (2026-09-04)
 
 
