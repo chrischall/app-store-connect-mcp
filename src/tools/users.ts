@@ -1,4 +1,4 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import { minifiedResult, schemaConfirm } from '@chrischall/mcp-utils';
 import { client, paginate, pageSize, paginateOpts } from '../client.js';
@@ -124,12 +124,12 @@ export function registerUserTools(server: McpServer): void {
     'list_users',
     {
       description: 'List users on your App Store Connect team.',
-      inputSchema: {
+      inputSchema: z.object({
         limit: z.number().int().min(1).max(1000).optional().describe('Max users (default 100). With auto_paginate this is the total across pages.'),
         auto_paginate: z.boolean().optional().describe('Follow links.next across pages until the limit is reached (default false).'),
         username: z.string().optional().describe('Exact username (email) filter'),
         roles: z.array(z.enum(ROLE_VALUES)).optional().describe('Filter by one or more roles'),
-      },
+      }),
       annotations: { readOnlyHint: true },
     },
     listUsers
@@ -139,11 +139,11 @@ export function registerUserTools(server: McpServer): void {
     'list_user_invitations',
     {
       description: 'List pending user invitations on your team.',
-      inputSchema: {
+      inputSchema: z.object({
         limit: z.number().int().min(1).max(1000).optional().describe('Max invitations (default 100). With auto_paginate this is the total across pages.'),
         auto_paginate: z.boolean().optional().describe('Follow links.next across pages until the limit is reached (default false).'),
         email: z.string().optional().describe('Exact email filter'),
-      },
+      }),
       annotations: { readOnlyHint: true },
     },
     listUserInvitations
@@ -153,7 +153,7 @@ export function registerUserTools(server: McpServer): void {
     'invite_user',
     {
       description: 'Invite a new user to your App Store Connect team with specified roles (sends a real email; roles can include ADMIN). Without confirm:true this returns a dry-run preview and makes NO network call; with confirm:true it sends the invitation.',
-      inputSchema: {
+      inputSchema: z.object({
         email: z.string().email().describe("User's email"),
         firstName: z.string().describe('First name'),
         lastName: z.string().describe('Last name'),
@@ -162,7 +162,7 @@ export function registerUserTools(server: McpServer): void {
         provisioningAllowed: z.boolean().optional().describe('Allow access to provisioning (certificates/profiles). Default false.'),
         visibleAppIds: z.array(z.string()).optional().describe('Restrict visibility to these app IDs. If provided, allAppsVisible defaults to false.'),
         confirm: schemaConfirm,
-      },
+      }),
       annotations: { destructiveHint: true },
     },
     inviteUser

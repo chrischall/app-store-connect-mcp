@@ -1,4 +1,4 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import { minifiedResult, schemaConfirm } from '@chrischall/mcp-utils';
 import { client, paginate, pageSize, paginateOpts } from '../client.js';
@@ -173,13 +173,13 @@ export function registerTestFlightTools(server: McpServer): void {
     'list_builds',
     {
       description: 'List recent builds, sorted by upload date (newest first). Filter by app, processing state, or version.',
-      inputSchema: {
+      inputSchema: z.object({
         appId: z.string().optional().describe('Filter to builds for a single app ID'),
         limit: z.number().int().min(1).max(1000).optional().describe('Max builds (default 25). With auto_paginate this is the total across pages.'),
         auto_paginate: z.boolean().optional().describe('Follow links.next across pages until the limit is reached (default false).'),
         processingState: z.enum(['PROCESSING', 'FAILED', 'INVALID', 'VALID']).optional().describe('Filter by processing state'),
         version: z.string().optional().describe('Filter by build version (e.g. "42")'),
-      },
+      }),
       annotations: { readOnlyHint: true },
     },
     listBuilds
@@ -189,7 +189,7 @@ export function registerTestFlightTools(server: McpServer): void {
     'get_build',
     {
       description: 'Get a single build by ID — version, processing state, expiration, encryption flag.',
-      inputSchema: { buildId: z.string().describe('Build ID') },
+      inputSchema: z.object({ buildId: z.string().describe('Build ID') }),
       annotations: { readOnlyHint: true },
     },
     getBuild
@@ -199,12 +199,12 @@ export function registerTestFlightTools(server: McpServer): void {
     'list_beta_groups',
     {
       description: 'List TestFlight beta groups (internal and external). Filter by app or group type.',
-      inputSchema: {
+      inputSchema: z.object({
         appId: z.string().optional().describe('Filter to beta groups for a single app ID'),
         limit: z.number().int().min(1).max(1000).optional().describe('Max groups (default 50). With auto_paginate this is the total across pages.'),
         auto_paginate: z.boolean().optional().describe('Follow links.next across pages until the limit is reached (default false).'),
         isInternalGroup: z.boolean().optional().describe('true = internal-only, false = external'),
-      },
+      }),
       annotations: { readOnlyHint: true },
     },
     listBetaGroups
@@ -214,13 +214,13 @@ export function registerTestFlightTools(server: McpServer): void {
     'list_beta_testers',
     {
       description: 'List TestFlight beta testers. Filter by app, beta group, or email.',
-      inputSchema: {
+      inputSchema: z.object({
         appId: z.string().optional().describe('Filter to testers with access to a specific app'),
         betaGroupId: z.string().optional().describe('Filter to testers in a specific beta group'),
         email: z.string().optional().describe('Exact email match'),
         limit: z.number().int().min(1).max(1000).optional().describe('Max testers (default 100). With auto_paginate this is the total across pages.'),
         auto_paginate: z.boolean().optional().describe('Follow links.next across pages until the limit is reached (default false).'),
-      },
+      }),
       annotations: { readOnlyHint: true },
     },
     listBetaTesters
@@ -230,14 +230,14 @@ export function registerTestFlightTools(server: McpServer): void {
     'invite_beta_tester',
     {
       description: 'Invite a new beta tester by email (sends a real email). Optionally adds them to one or more beta groups or specific builds. Without confirm:true this returns a dry-run preview and makes NO network call; with confirm:true it sends the invite.',
-      inputSchema: {
+      inputSchema: z.object({
         email: z.string().email().describe("Tester's email address"),
         firstName: z.string().optional().describe("Tester's first name"),
         lastName: z.string().optional().describe("Tester's last name"),
         betaGroupIds: z.array(z.string()).optional().describe('Beta group IDs to add the tester to'),
         buildIds: z.array(z.string()).optional().describe('Specific build IDs to grant the tester access to'),
         confirm: schemaConfirm,
-      },
+      }),
       annotations: { destructiveHint: true },
     },
     inviteBetaTester
@@ -247,7 +247,7 @@ export function registerTestFlightTools(server: McpServer): void {
     'delete_beta_tester',
     {
       description: 'Permanently remove a beta tester from your team. Without confirm:true this returns a dry-run preview and makes NO network call; with confirm:true it deletes.',
-      inputSchema: { betaTesterId: z.string().describe('Beta tester ID'), confirm: schemaConfirm },
+      inputSchema: z.object({ betaTesterId: z.string().describe('Beta tester ID'), confirm: schemaConfirm }),
       annotations: { destructiveHint: true },
     },
     deleteBetaTester
@@ -257,11 +257,11 @@ export function registerTestFlightTools(server: McpServer): void {
     'add_testers_to_beta_group',
     {
       description: 'Add one or more existing beta testers to a beta group. Without confirm:true this returns a dry-run preview and makes NO network call; with confirm:true it adds them.',
-      inputSchema: {
+      inputSchema: z.object({
         betaGroupId: z.string().describe('Beta group ID'),
         betaTesterIds: z.array(z.string()).min(1).describe('IDs of beta testers to add'),
         confirm: schemaConfirm,
-      },
+      }),
       annotations: { destructiveHint: true },
     },
     addTestersToBetaGroup
@@ -271,11 +271,11 @@ export function registerTestFlightTools(server: McpServer): void {
     'remove_testers_from_beta_group',
     {
       description: 'Remove one or more beta testers from a beta group (does not delete the testers). Without confirm:true this returns a dry-run preview and makes NO network call; with confirm:true it removes them.',
-      inputSchema: {
+      inputSchema: z.object({
         betaGroupId: z.string().describe('Beta group ID'),
         betaTesterIds: z.array(z.string()).min(1).describe('IDs of beta testers to remove'),
         confirm: schemaConfirm,
-      },
+      }),
       annotations: { destructiveHint: true },
     },
     removeTestersFromBetaGroup
@@ -285,7 +285,7 @@ export function registerTestFlightTools(server: McpServer): void {
     'submit_build_for_beta_review',
     {
       description: 'Submit a build for TestFlight beta app review (required before external testing) — submits to Apple. Without confirm:true this returns a dry-run preview and makes NO network call; with confirm:true it submits.',
-      inputSchema: { buildId: z.string().describe('Build ID to submit'), confirm: schemaConfirm },
+      inputSchema: z.object({ buildId: z.string().describe('Build ID to submit'), confirm: schemaConfirm }),
       annotations: { destructiveHint: true },
     },
     submitBuildForBetaReview
