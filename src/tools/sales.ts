@@ -1,4 +1,4 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import { gunzipSync } from 'zlib';
 import { minifiedResult } from '@chrischall/mcp-utils';
@@ -91,7 +91,7 @@ export function registerSalesTools(server: McpServer): void {
     {
       description:
         'Download a sales/units report. Returns parsed TSV rows. Use a vendor number from App Store Connect > Payments and Financial Reports.',
-      inputSchema: {
+      inputSchema: z.object({
         vendorNumber: z.string().describe('Apple-issued vendor number (e.g. "80012345")'),
         reportDate: z.string().describe('Report date — DAILY: YYYY-MM-DD, WEEKLY: YYYY-MM-DD (Sunday), MONTHLY: YYYY-MM, YEARLY: YYYY'),
         frequency: z.enum(['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY']).optional().describe('Report frequency (default DAILY)'),
@@ -102,7 +102,7 @@ export function registerSalesTools(server: McpServer): void {
         reportSubType: z.enum(['SUMMARY', 'DETAILED']).optional().describe('Report sub-type (default SUMMARY)'),
         version: z.string().optional().describe('Report version (default 1_0). Newer SALES reports use 1_1 with extra columns.'),
         limit: z.number().int().min(1).max(10000).optional().describe('Max rows to return inline (default 500). Total row count is always reported.'),
-      },
+      }),
       annotations: { readOnlyHint: true },
     },
     downloadSalesReport
@@ -113,13 +113,13 @@ export function registerSalesTools(server: McpServer): void {
     {
       description:
         'Download a financial report (proceeds and adjustments) for a region. Returns parsed TSV rows.',
-      inputSchema: {
+      inputSchema: z.object({
         vendorNumber: z.string().describe('Apple-issued vendor number'),
         reportDate: z.string().describe('Fiscal report month, format YYYY-MM (e.g. "2025-09")'),
         regionCode: z.string().describe('Region code, e.g. "Z1" (worldwide), "US", "EU", "JP"'),
         reportType: z.enum(['FINANCIAL', 'FINANCE_DETAIL']).optional().describe('Report type (default FINANCIAL)'),
         limit: z.number().int().min(1).max(10000).optional().describe('Max rows to return inline (default 500)'),
-      },
+      }),
       annotations: { readOnlyHint: true },
     },
     downloadFinanceReport

@@ -1,4 +1,4 @@
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { readEnvVar } from '@chrischall/mcp-utils';
 import { registerCredentialHealthcheckTool } from '@chrischall/mcp-utils/healthcheck';
 import { client as defaultClient } from '../client.js';
