@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.0.0](https://github.com/chrischall/app-store-connect-mcp/compare/v0.4.1...v1.0.0) (2026-09-17)
+
+
+### ⚠ BREAKING CHANGES
+
+* **mcp:** migrate server to SDK v2 ([#100](https://github.com/chrischall/app-store-connect-mcp/issues/100))
+
+### Features
+
+* **mcp:** migrate server to SDK v2 ([#100](https://github.com/chrischall/app-store-connect-mcp/issues/100)) ([e84c305](https://github.com/chrischall/app-store-connect-mcp/commit/e84c3050f0a588e0c3743a84b3c61ff168d3256f))
+
+
+### Bug Fixes
+
+* **build:** preserve Zod initialization in standalone bundle ([#102](https://github.com/chrischall/app-store-connect-mcp/issues/102)) ([7b92232](https://github.com/chrischall/app-store-connect-mcp/commit/7b922321e5cd7a224e369b808b23441f6c0990e5))
+* **deps:** Bump the production-dependencies group with 2 updates ([#98](https://github.com/chrischall/app-store-connect-mcp/issues/98)) ([8912c04](https://github.com/chrischall/app-store-connect-mcp/commit/8912c04839d1c0d0ac858139ec190158f6d47ae5))
+* **mcp:** smoke-test SDK v2 registrations ([#103](https://github.com/chrischall/app-store-connect-mcp/issues/103)) ([ded127e](https://github.com/chrischall/app-store-connect-mcp/commit/ded127e2169590c20431f40c68cbb49f0b17ac94))
+
 ## [0.4.1](https://github.com/chrischall/app-store-connect-mcp/compare/v0.4.0...v0.4.1) (2026-09-10)
 
 
