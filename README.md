@@ -25,7 +25,7 @@ Ask Claude things like:
 ## Requirements
 
 - [Claude Desktop](https://claude.ai/download) or [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
-- [Node.js](https://nodejs.org) 20.6 or later
+- [Node.js](https://nodejs.org) 22 or later
 - An [App Store Connect API key](https://appstoreconnect.apple.com/access/integrations/api) (`.p8` file, Key ID, and Issuer ID) — admin or higher access required to create
 
 ## Installation
