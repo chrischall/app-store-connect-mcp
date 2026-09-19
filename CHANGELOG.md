@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/chrischall/app-store-connect-mcp/compare/v1.0.0...v1.1.0) (2026-09-19)
+
+
+### Features
+
+* **deps:** take mcp-utils 1.0.0 so server/discover works ([#104](https://github.com/chrischall/app-store-connect-mcp/issues/104)) ([36edc1f](https://github.com/chrischall/app-store-connect-mcp/commit/36edc1f10f602d32b82c00c85ec32cd9e73739a5))
+
 ## [1.0.0](https://github.com/chrischall/app-store-connect-mcp/compare/v0.4.1...v1.0.0) (2026-09-17)
 
 
