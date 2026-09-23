@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import { minifiedResult, schemaConfirm } from '@chrischall/mcp-utils';
-import { client, paginate, pageSize, paginateOpts } from '../client.js';
+import { client, paginate, pageSize, paginateOpts, idSegment, ascId } from '../client.js';
 import { AscEnvelope, AscResource, ToolResult } from '../types.js';
 
 interface CustomerReviewAttrs {
@@ -22,7 +22,7 @@ interface ReviewResponseAttrs {
 export async function listCustomerReviews(args: { appId: string; limit?: number; rating?: number; territory?: string; sort?: 'createdDate' | '-createdDate' | 'rating' | '-rating'; auto_paginate?: boolean } = { appId: '' }): Promise<ToolResult> {
   if (!args.appId) throw new Error('appId is required');
   const { items, pagination } = await paginate<AscResource<CustomerReviewAttrs>>(
-    `/v1/apps/${args.appId}/customerReviews`,
+    `/v1/apps/${idSegment(args.appId)}/customerReviews`,
     {
       limit: pageSize(args.limit, 50, args.auto_paginate),
       'filter[rating]': args.rating === undefined ? undefined : String(args.rating),
@@ -46,7 +46,7 @@ export async function listCustomerReviews(args: { appId: string; limit?: number;
 export async function getCustomerReview(args: { reviewId: string }): Promise<ToolResult> {
   const response = await client.request<AscEnvelope<AscResource<CustomerReviewAttrs>>>(
     'GET',
-    `/v1/customerReviews/${args.reviewId}`,
+    `/v1/customerReviews/${idSegment(args.reviewId)}`,
     undefined,
     { include: 'response' }
   );
@@ -81,7 +81,7 @@ export function registerReviewTools(server: McpServer): void {
     {
       description: 'List customer reviews for an app, sorted by date (newest first by default). Filter by rating or territory.',
       inputSchema: z.object({
-        appId: z.string().describe('App Store Connect app ID'),
+        appId: ascId.describe('App Store Connect app ID'),
         limit: z.number().int().min(1).max(1000).optional().describe('Max reviews (default 50). With auto_paginate this is the total across pages.'),
         auto_paginate: z.boolean().optional().describe('Follow links.next across pages until the limit is reached (default false).'),
         rating: z.number().int().min(1).max(5).optional().describe('Filter by star rating (1-5)'),
@@ -97,7 +97,7 @@ export function registerReviewTools(server: McpServer): void {
     'get_customer_review',
     {
       description: 'Get a single customer review with the developer response, if any.',
-      inputSchema: z.object({ reviewId: z.string().describe('Customer review ID') }),
+      inputSchema: z.object({ reviewId: ascId.describe('Customer review ID') }),
       annotations: { readOnlyHint: true },
     },
     getCustomerReview
@@ -109,7 +109,7 @@ export function registerReviewTools(server: McpServer): void {
       description:
         'Post or update the PUBLIC developer response to a customer review (visible on the App Store). Without confirm:true this returns a dry-run preview and makes NO network call; with confirm:true it posts the response.',
       inputSchema: z.object({
-        reviewId: z.string().describe('Customer review ID to respond to'),
+        reviewId: ascId.describe('Customer review ID to respond to'),
         responseBody: z.string().min(1).max(5970).describe('Response text (max 5970 chars)'),
         confirm: schemaConfirm,
       }),

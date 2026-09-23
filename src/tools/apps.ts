@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import { minifiedResult } from '@chrischall/mcp-utils';
-import { client, paginate, pageSize, paginateOpts } from '../client.js';
+import { client, paginate, pageSize, paginateOpts, idSegment, ascId } from '../client.js';
 import { AscEnvelope, AscResource, ToolResult } from '../types.js';
 
 interface AppAttrs {
@@ -52,13 +52,13 @@ export async function listApps(args: { limit?: number; bundleId?: string; name?:
 }
 
 export async function getApp(args: { appId: string }): Promise<ToolResult> {
-  const response = await client.request<AscEnvelope<AscResource<AppAttrs>>>('GET', `/v1/apps/${args.appId}`);
+  const response = await client.request<AscEnvelope<AscResource<AppAttrs>>>('GET', `/v1/apps/${idSegment(args.appId)}`);
   return minifiedResult({ id: response.data.id, ...response.data.attributes });
 }
 
 export async function listAppStoreVersions(args: { appId: string; limit?: number; platform?: string; appStoreState?: string; auto_paginate?: boolean }): Promise<ToolResult> {
   const { items, pagination } = await paginate<AscResource<AppVersionAttrs>>(
-    `/v1/apps/${args.appId}/appStoreVersions`,
+    `/v1/apps/${idSegment(args.appId)}/appStoreVersions`,
     {
       limit: pageSize(args.limit, 25, args.auto_paginate),
       'filter[platform]': args.platform,
@@ -78,7 +78,7 @@ export async function listAppStoreVersions(args: { appId: string; limit?: number
 }
 
 export async function getAppInfos(args: { appId: string }): Promise<ToolResult> {
-  const response = await client.request<AscEnvelope<AscResource<AppInfoAttrs>[]>>('GET', `/v1/apps/${args.appId}/appInfos`);
+  const response = await client.request<AscEnvelope<AscResource<AppInfoAttrs>[]>>('GET', `/v1/apps/${idSegment(args.appId)}/appInfos`);
   const infos = response.data.map((r) => ({ id: r.id, ...r.attributes }));
   return minifiedResult({ count: infos.length, infos });
 }
@@ -104,7 +104,7 @@ export function registerAppTools(server: McpServer): void {
     {
       description: 'Get details for a single app by App Store Connect app ID.',
       inputSchema: z.object({
-        appId: z.string().describe('App Store Connect app ID (numeric, from list_apps)'),
+        appId: ascId.describe('App Store Connect app ID (numeric, from list_apps)'),
       }),
       annotations: { readOnlyHint: true },
     },
@@ -116,7 +116,7 @@ export function registerAppTools(server: McpServer): void {
     {
       description: 'List App Store versions (releases) for an app, including state and platform.',
       inputSchema: z.object({
-        appId: z.string().describe('App Store Connect app ID'),
+        appId: ascId.describe('App Store Connect app ID'),
         limit: z.number().int().min(1).max(1000).optional().describe('Max versions to return (default 25). With auto_paginate this is the total across pages.'),
         auto_paginate: z.boolean().optional().describe('Follow links.next across pages until the limit is reached (default false).'),
         platform: z.enum(['IOS', 'MAC_OS', 'TV_OS', 'VISION_OS']).optional().describe('Filter by platform'),
@@ -132,7 +132,7 @@ export function registerAppTools(server: McpServer): void {
     {
       description: 'List App Info records for an app — includes age rating and current store state.',
       inputSchema: z.object({
-        appId: z.string().describe('App Store Connect app ID'),
+        appId: ascId.describe('App Store Connect app ID'),
       }),
       annotations: { readOnlyHint: true },
     },
