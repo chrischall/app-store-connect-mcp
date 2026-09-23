@@ -263,10 +263,13 @@ export interface PaginationInfo {
   fetched: number;
   /** Number of API pages fetched. */
   pages: number;
-  /** True if more results exist beyond what was returned (truncated at the limit/cap). */
+  /**
+   * True if more results exist beyond what was returned (truncated at the
+   * limit/cap). There is deliberately no resume cursor: a truncation mid-page
+   * would make `links.next` skip the unreturned rest of that page, and no tool
+   * accepts a cursor. Callers wanting more raise `limit` / set `auto_paginate`.
+   */
   has_more: boolean;
-  /** The next-page cursor URL when `has_more` is true, so callers can resume manually. */
-  next_cursor?: string;
 }
 
 export interface PaginatedResult<T> {
@@ -334,7 +337,6 @@ export async function paginate<T = AscResource>(
     if (items.length >= limit) {
       // Hit the ceiling; surface whether the API itself had more to give.
       hasMore = hasMore || Boolean(candidateNext);
-      if (candidateNext) nextUrl = candidateNext;
       break;
     }
     if (!candidateNext) {
@@ -357,6 +359,5 @@ export async function paginate<T = AscResource>(
   }
 
   const pagination: PaginationInfo = { fetched: items.length, pages, has_more: hasMore };
-  if (hasMore && nextUrl) pagination.next_cursor = nextUrl;
   return { items, pagination };
 }
