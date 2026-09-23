@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.2](https://github.com/chrischall/app-store-connect-mcp/compare/v1.1.1...v1.1.2) (2026-09-23)
+
+
+### Bug Fixes
+
+* **security:** validate ASC ID path segments, mark review text untrusted, drop lossy pagination cursor ([#114](https://github.com/chrischall/app-store-connect-mcp/issues/114)) ([527aaae](https://github.com/chrischall/app-store-connect-mcp/commit/527aaaea2beaee7e0883295be10fe839db85db72))
+
 ## [1.1.1](https://github.com/chrischall/app-store-connect-mcp/compare/v1.1.0...v1.1.1) (2026-09-23)
 
 
