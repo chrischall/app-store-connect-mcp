@@ -41,7 +41,7 @@ describe('paginate', () => {
     expect(reqSpy).toHaveBeenNthCalledWith(3, 'GET', '/v1/things?cursor=B');
   });
 
-  it('reports has_more and a next_cursor when truncated at the limit', async () => {
+  it('reports has_more (and no lossy resume cursor) when truncated mid-page at the limit', async () => {
     reqSpy
       .mockResolvedValueOnce(page(['1', '2'], `${API_BASE}/v1/things?cursor=A`) as never)
       .mockResolvedValueOnce(page(['3', '4'], `${API_BASE}/v1/things?cursor=B`) as never);
@@ -52,7 +52,11 @@ describe('paginate', () => {
     expect(result.items.map((r) => r.id)).toEqual(['1', '2', '3']);
     expect(result.pagination.fetched).toBe(3);
     expect(result.pagination.has_more).toBe(true);
-    expect(result.pagination.next_cursor).toBe(`${API_BASE}/v1/things?cursor=B`);
+    // Item '4' was fetched but not returned; a cursor pointing at page B would
+    // silently skip it on resume, and no tool accepts a cursor anyway — so the
+    // pagination block must not advertise one.
+    expect(result.pagination).toEqual({ fetched: 3, pages: 2, has_more: true });
+    expect(result.pagination).not.toHaveProperty('next_cursor');
     expect(reqSpy).toHaveBeenCalledTimes(2);
   });
 
@@ -171,6 +175,6 @@ describe('list tool wiring (listApps)', () => {
     expect(reqSpy).toHaveBeenCalledTimes(1);
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.pagination.has_more).toBe(true);
-    expect(parsed.pagination.next_cursor).toBe(`${API_BASE}/v1/apps?cursor=N1`);
+    expect(parsed.pagination).toEqual({ fetched: 1, pages: 1, has_more: true });
   });
 });

@@ -12,6 +12,7 @@ import {
   type ApiClient,
   type CachedTokenSource,
 } from '@chrischall/mcp-utils';
+import { z } from 'zod';
 import type { AscEnvelope, AscResource } from './types.js';
 
 // Load .env (local dev) from the package root. `loadDotenvSafely` swallows a
@@ -33,6 +34,27 @@ function readVar(key: string): string | undefined {
 }
 
 export const API_BASE = 'https://api.appstoreconnect.apple.com';
+
+// App Store Connect resource IDs are numeric (apps) or UUID-shaped (builds,
+// testers, groups, reviews). Anything else — `/`, `..`, `?`, `#`, `%` — could
+// retarget the request once interpolated into a path, because `new URL()`
+// resolves dot segments (`/v1/betaTesters/x/../../betaGroups/G` →
+// `/v1/betaGroups/G`).
+const ASC_ID_RE = /^[A-Za-z0-9-]+$/;
+const ASC_ID_MESSAGE = 'Invalid App Store Connect ID: expected letters, digits and hyphens only';
+
+/** zod schema for an ID tool arg; advertises the pattern in tools/list. */
+export const ascId = z.string().regex(ASC_ID_RE, ASC_ID_MESSAGE);
+
+/**
+ * Validate an ID before interpolating it into a request path. Every handler
+ * routes path IDs through this (not just the zod schema), so a direct call or a
+ * schema bypass can never send a dot-segment path.
+ */
+export function idSegment(id: string): string {
+  if (!ASC_ID_RE.test(id)) throw new Error(`${ASC_ID_MESSAGE} (got ${JSON.stringify(id)})`);
+  return id;
+}
 const SERVICE_NAME = 'App Store Connect';
 
 // Pagination defaults. ASC paginates via the response BODY's `links.next` (a
@@ -263,10 +285,13 @@ export interface PaginationInfo {
   fetched: number;
   /** Number of API pages fetched. */
   pages: number;
-  /** True if more results exist beyond what was returned (truncated at the limit/cap). */
+  /**
+   * True if more results exist beyond what was returned (truncated at the
+   * limit/cap). There is deliberately no resume cursor: a truncation mid-page
+   * would make `links.next` skip the unreturned rest of that page, and no tool
+   * accepts a cursor. Callers wanting more raise `limit` / set `auto_paginate`.
+   */
   has_more: boolean;
-  /** The next-page cursor URL when `has_more` is true, so callers can resume manually. */
-  next_cursor?: string;
 }
 
 export interface PaginatedResult<T> {
@@ -334,7 +359,6 @@ export async function paginate<T = AscResource>(
     if (items.length >= limit) {
       // Hit the ceiling; surface whether the API itself had more to give.
       hasMore = hasMore || Boolean(candidateNext);
-      if (candidateNext) nextUrl = candidateNext;
       break;
     }
     if (!candidateNext) {
@@ -357,6 +381,5 @@ export async function paginate<T = AscResource>(
   }
 
   const pagination: PaginationInfo = { fetched: items.length, pages, has_more: hasMore };
-  if (hasMore && nextUrl) pagination.next_cursor = nextUrl;
   return { items, pagination };
 }
