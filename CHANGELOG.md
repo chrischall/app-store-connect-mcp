@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.1.1](https://github.com/chrischall/app-store-connect-mcp/compare/v1.1.0...v1.1.1) (2026-09-23)
+
+
+### Bug Fixes
+
+* **deps:** Bump dotenv from 17.4.2 to 18.0.1 ([#110](https://github.com/chrischall/app-store-connect-mcp/issues/110)) ([950d9d1](https://github.com/chrischall/app-store-connect-mcp/commit/950d9d15f3c1e319787440766ed4a06d28dfa3ef))
+* **deps:** Bump zod in the production-dependencies group ([#109](https://github.com/chrischall/app-store-connect-mcp/issues/109)) ([184a688](https://github.com/chrischall/app-store-connect-mcp/commit/184a6886fa86e1ce2ff3315e5b67203f8573366f))
+* **deps:** require zod ^4.6.5 to match @chrischall/mcp-utils 2.4.0 ([#113](https://github.com/chrischall/app-store-connect-mcp/issues/113)) ([723a154](https://github.com/chrischall/app-store-connect-mcp/commit/723a1541c127b0fb5da82ba5fa5c5f27f6cc5629))
+* **deps:** upgrade @chrischall/mcp-utils to 2.4.0 and @fetchproxy/* to 3.2.0 ([#112](https://github.com/chrischall/app-store-connect-mcp/issues/112)) ([282a721](https://github.com/chrischall/app-store-connect-mcp/commit/282a7210f78168d251972f0eea289bb72c03873f))
+
 ## [1.1.0](https://github.com/chrischall/app-store-connect-mcp/compare/v1.0.0...v1.1.0) (2026-09-19)
 
 
