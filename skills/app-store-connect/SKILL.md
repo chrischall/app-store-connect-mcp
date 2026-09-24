@@ -54,4 +54,5 @@ The MCP signs short-lived JWTs locally; your private key never leaves the machin
 
 - App Store Connect IDs (apps, builds, testers) are the long numeric strings shown in tool output, not the bundle ID or version string.
 - For sales reports, find the **vendorNumber** in App Store Connect → Payments and Financial Reports. Daily reports are typically available ~24 hours after the date closes.
+- Every write asks the user to confirm first. Where the client cannot show a prompt, the first call sends nothing and returns `status: "confirmation-required"` with a preview and a `confirmToken`: show the preview to the user, and only after they approve call the same tool again with the same arguments plus `confirmToken`.
 - Most TestFlight write operations require an API key with **App Manager** or **Admin** role.

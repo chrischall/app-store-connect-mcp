@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { client } from '../src/client.js';
-import { listCustomerReviews, getCustomerReview, respondToReview } from '../src/tools/reviews.js';
+import { listCustomerReviews, getCustomerReview } from '../src/tools/reviews.js';
+import { writeHarness, phaseOne, confirmedCall } from './helpers.js';
 
 describe('reviews tools', () => {
   let reqSpy: ReturnType<typeof vi.spyOn<typeof client, 'request'>>;
@@ -47,11 +48,17 @@ describe('reviews tools', () => {
     expect(reqSpy).toHaveBeenCalledWith('GET', '/v1/customerReviews/r9', undefined, { include: 'response' });
   });
 
-  it('respondToReview: POST /v1/customerReviewResponses with relationship', async () => {
+  it('respondToReview: POST /v1/customerReviewResponses with relationship, once, after the token', async () => {
     reqSpy.mockResolvedValueOnce({
       data: { type: 'customerReviewResponses', id: 'resp1', attributes: { responseBody: 'Thanks!', state: 'PUBLISHED', lastModifiedDate: '2025-10-10' } },
     } as never);
-    await respondToReview({ reviewId: 'r9', responseBody: 'Thanks!', confirm: true });
+    const harness = await writeHarness();
+    try {
+      await confirmedCall(harness, 'respond_to_review', { reviewId: 'r9', responseBody: 'Thanks!' });
+    } finally {
+      await harness.close();
+    }
+    expect(reqSpy).toHaveBeenCalledTimes(1);
     expect(reqSpy).toHaveBeenCalledWith('POST', '/v1/customerReviewResponses', {
       data: {
         type: 'customerReviewResponses',
@@ -61,13 +68,20 @@ describe('reviews tools', () => {
     });
   });
 
-  it('respondToReview: without confirm returns a dry-run preview and makes NO network call', async () => {
-    const result = await respondToReview({ reviewId: 'r9', responseBody: 'Thanks!' });
-    expect(reqSpy).not.toHaveBeenCalled();
-    const parsed = JSON.parse(result.content[0].text);
-    expect(parsed.dryRun).toBe(true);
-    expect(parsed.willSend.data.attributes.responseBody).toBe('Thanks!');
+  it('respondToReview: phase 1 returns the preview and makes NO network call', async () => {
+    const harness = await writeHarness();
+    try {
+      const body = await phaseOne(harness, 'respond_to_review', { reviewId: 'r9', responseBody: 'Thanks!' });
+      expect(reqSpy).not.toHaveBeenCalled();
+      expect(body.preview.method).toBe('POST');
+      expect(body.preview.path).toBe('/v1/customerReviewResponses');
+      expect(body.preview.willSend.data.attributes.responseBody).toBe('Thanks!');
+      expect(body.preview.note).toMatch(/publicly visible/);
+    } finally {
+      await harness.close();
+    }
   });
+
   describe('third-party review text is marked untrusted', () => {
     const injected = {
       type: 'customerReviews',
