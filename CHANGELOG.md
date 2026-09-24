@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/chrischall/app-store-connect-mcp/compare/v1.1.2...v1.2.0) (2026-09-24)
+
+
+### Features
+
+* confirm writes with a preview token instead of confirm: true ([#116](https://github.com/chrischall/app-store-connect-mcp/issues/116)) ([9e226e4](https://github.com/chrischall/app-store-connect-mcp/commit/9e226e47c7aa84496b99eb69822f0b0f25d36d4a))
+
 ## [1.1.2](https://github.com/chrischall/app-store-connect-mcp/compare/v1.1.1...v1.1.2) (2026-09-23)
 
 
