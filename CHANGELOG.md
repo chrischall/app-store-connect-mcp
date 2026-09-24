@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/chrischall/app-store-connect-mcp/compare/v1.2.0...v1.2.1) (2026-09-24)
+
+
+### Bug Fixes
+
+* **deps:** Bump dotenv in the production-dependencies group ([#119](https://github.com/chrischall/app-store-connect-mcp/issues/119)) ([232baf5](https://github.com/chrischall/app-store-connect-mcp/commit/232baf52476a3c539ccb90af99b55559bb423e54))
+
 ## [1.2.0](https://github.com/chrischall/app-store-connect-mcp/compare/v1.1.2...v1.2.0) (2026-09-24)
 
 
