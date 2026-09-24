@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { client } from '../src/client.js';
-import { listUsers, listUserInvitations, inviteUser } from '../src/tools/users.js';
+import { listUsers, listUserInvitations } from '../src/tools/users.js';
+import { writeHarness, phaseOne, confirmedCall } from './helpers.js';
 
 describe('users tools', () => {
   let reqSpy: ReturnType<typeof vi.spyOn<typeof client, 'request'>>;
@@ -50,7 +51,13 @@ describe('users tools', () => {
         attributes: { email: 'a@b.com', firstName: 'A', lastName: 'B', roles: ['DEVELOPER'], allAppsVisible: true, provisioningAllowed: false },
       },
     } as never);
-    await inviteUser({ email: 'a@b.com', firstName: 'A', lastName: 'B', roles: ['DEVELOPER'], confirm: true });
+    const harness = await writeHarness();
+    try {
+      await confirmedCall(harness, 'invite_user', { email: 'a@b.com', firstName: 'A', lastName: 'B', roles: ['DEVELOPER'] });
+    } finally {
+      await harness.close();
+    }
+    expect(reqSpy).toHaveBeenCalledTimes(1);
     expect(reqSpy).toHaveBeenCalledWith('POST', '/v1/userInvitations', {
       data: {
         type: 'userInvitations',
@@ -74,14 +81,19 @@ describe('users tools', () => {
         attributes: { email: 'a@b.com', firstName: 'A', lastName: 'B', roles: ['APP_MANAGER'], allAppsVisible: false, provisioningAllowed: false },
       },
     } as never);
-    await inviteUser({
-      email: 'a@b.com',
-      firstName: 'A',
-      lastName: 'B',
-      roles: ['APP_MANAGER'],
-      visibleAppIds: ['app1', 'app2'],
-      confirm: true,
-    });
+    const harness = await writeHarness();
+    try {
+      await confirmedCall(harness, 'invite_user', {
+        email: 'a@b.com',
+        firstName: 'A',
+        lastName: 'B',
+        roles: ['APP_MANAGER'],
+        visibleAppIds: ['app1', 'app2'],
+      });
+    } finally {
+      await harness.close();
+    }
+    expect(reqSpy).toHaveBeenCalledTimes(1);
     expect(reqSpy).toHaveBeenCalledWith('POST', '/v1/userInvitations', {
       data: {
         type: 'userInvitations',
@@ -100,11 +112,17 @@ describe('users tools', () => {
     });
   });
 
-  it('inviteUser: without confirm returns a dry-run preview and makes NO network call', async () => {
-    const result = await inviteUser({ email: 'a@b.com', firstName: 'A', lastName: 'B', roles: ['ADMIN'] });
-    expect(reqSpy).not.toHaveBeenCalled();
-    const parsed = JSON.parse(result.content[0].text);
-    expect(parsed.dryRun).toBe(true);
-    expect(parsed.willSend.data.attributes.roles).toEqual(['ADMIN']);
+  it('inviteUser: phase 1 returns the preview and makes NO network call', async () => {
+    const harness = await writeHarness();
+    try {
+      const body = await phaseOne(harness, 'invite_user', { email: 'a@b.com', firstName: 'A', lastName: 'B', roles: ['ADMIN'] });
+      expect(reqSpy).not.toHaveBeenCalled();
+      expect(body.preview.method).toBe('POST');
+      expect(body.preview.path).toBe('/v1/userInvitations');
+      expect(body.preview.action).toMatch(/ADMIN/);
+      expect(body.preview.willSend.data.attributes.roles).toEqual(['ADMIN']);
+    } finally {
+      await harness.close();
+    }
   });
 });

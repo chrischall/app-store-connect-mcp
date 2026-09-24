@@ -129,6 +129,16 @@ The key signs short-lived (20-minute) ES256 JWTs on demand. No external token st
 | `APP_STORE_CONNECT_PRIVATE_KEY` | one of | Full PEM contents of your `.p8`. Newline-escapes (`\n`) are accepted. |
 | `APP_STORE_CONNECT_PRIVATE_KEY_PATH` | one of | Absolute path to the `.p8` file |
 
+## Confirmations
+
+Every write (`invite_beta_tester`, `delete_beta_tester`, `add_testers_to_beta_group`, `remove_testers_from_beta_group`, `submit_build_for_beta_review`, `respond_to_review`, `invite_user`) asks you to confirm before anything is sent. A client that can show a confirmation prompt (Claude Code) shows one with the exact request. On a client that cannot, the first call sends nothing and returns a preview — method, path and the JSON body it will send — plus a `confirmToken`; only a repeat call with the same arguments and that token performs the write. A token is single-use, expires, and is refused if any argument changed since the preview.
+
+| variable | default | |
+|---|---|---|
+| `MCP_CONFIRM_MODE` | `ask-user` | What a write does on a client that cannot show a confirmation prompt (claude.ai, Claude Desktop). `ask-user`: two steps — the first call does nothing and returns a preview plus a token, and the model must get your approval in chat before calling again with it. `auto`: the same two steps, but the model may use the token after reviewing the preview itself. `refuse`: writes are refused on such clients. A client that can show prompts (Claude Code) always gets the real prompt. An unrecognised value is treated as `refuse`. |
+| `MCP_CONFIRM_TTL_SECONDS` | `600` | How long a token stays valid. |
+| `MCP_CONFIRM_SECRET` | random per process | Signing key; set it only if tokens must survive a server restart. |
+
 ## Development
 
 ```bash

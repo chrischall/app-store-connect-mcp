@@ -1,7 +1,8 @@
-import { McpServer } from '@modelcontextprotocol/server';
+import { McpServer, type InputRequiredResult, type ServerContext } from '@modelcontextprotocol/server';
 import { z } from 'zod';
-import { minifiedResult, schemaConfirm } from '@chrischall/mcp-utils';
+import { confirmTokenParam, minifiedResult } from '@chrischall/mcp-utils';
 import { client, paginate, pageSize, paginateOpts, idSegment, ascId } from '../client.js';
+import { CONFIRM_FLOW, confirmWrite } from '../confirm.js';
 import { AscEnvelope, AscResource, ToolResult } from '../types.js';
 
 interface CustomerReviewAttrs {
@@ -64,7 +65,7 @@ export async function getCustomerReview(args: { reviewId: string }): Promise<Too
   return minifiedResult({ untrusted_content: UNTRUSTED_REVIEW_NOTICE, id: response.data.id, ...response.data.attributes, included: response.included });
 }
 
-export async function respondToReview(args: { reviewId: string; responseBody: string; confirm?: boolean }): Promise<ToolResult> {
+export async function respondToReview(args: { reviewId: string; responseBody: string; confirmToken?: string }, ctx: ServerContext): Promise<ToolResult | InputRequiredResult> {
   const body = {
     data: {
       type: 'customerReviewResponses',
@@ -72,16 +73,18 @@ export async function respondToReview(args: { reviewId: string; responseBody: st
       relationships: { review: { data: { id: args.reviewId, type: 'customerReviews' } } },
     },
   };
-  if (args.confirm !== true) {
-    return minifiedResult({
-      dryRun: true,
-      action: 'Post a PUBLIC developer response to a customer review',
-      method: 'POST',
-      path: '/v1/customerReviewResponses',
-      willSend: body,
-      note: 'This response is publicly visible on the App Store. Dry run — re-run with confirm:true to post it.',
-    });
-  }
+  const gate = await confirmWrite(ctx, args.confirmToken, {
+    tool: 'respond_to_review',
+    action: 'review.respond',
+    message: 'Review and confirm this PUBLIC response to a customer review:',
+    target: args.reviewId,
+    summary: 'Post a PUBLIC developer response to a customer review',
+    method: 'POST',
+    path: '/v1/customerReviewResponses',
+    body,
+    note: 'This response is publicly visible on the App Store.',
+  });
+  if (gate) return gate;
   const response = await client.request<AscEnvelope<AscResource<ReviewResponseAttrs>>>('POST', '/v1/customerReviewResponses', body);
   return minifiedResult({ id: response.data.id, ...response.data.attributes });
 }
@@ -118,11 +121,11 @@ export function registerReviewTools(server: McpServer): void {
     'respond_to_review',
     {
       description:
-        'Post or update the PUBLIC developer response to a customer review (visible on the App Store). Without confirm:true this returns a dry-run preview and makes NO network call; with confirm:true it posts the response.',
+        'Post or update the PUBLIC developer response to a customer review (visible on the App Store). ' + CONFIRM_FLOW,
       inputSchema: z.object({
         reviewId: ascId.describe('Customer review ID to respond to'),
         responseBody: z.string().min(1).max(5970).describe('Response text (max 5970 chars)'),
-        confirm: schemaConfirm,
+        confirmToken: confirmTokenParam,
       }),
       annotations: { destructiveHint: true },
     },

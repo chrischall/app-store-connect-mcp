@@ -76,6 +76,7 @@ Generate a key at [appstoreconnect.apple.com → Users and Access → Integratio
 ## Notes
 
 - App Store Connect uses JSON:API: filters are `filter[name]=value`, sorts use `-` prefix for descending.
+- Every write (invites, deletions, group membership, review responses, beta review submission) asks the user to confirm first. Where the client cannot show a prompt, the first call sends nothing and returns `status: "confirmation-required"` with a preview and a `confirmToken`: show the preview to the user, and only after they approve call the same tool again with the same arguments plus `confirmToken`. Tokens are single-use and expire; if the arguments change you get `DRAFT_CHANGED` with a fresh preview.
 - All write operations (invites, deletions, review responses, beta review submission) require an API key with sufficient role (App Manager or Admin for most TestFlight/team work).
 - Sales reports come back as gzipped TSVs and are auto-parsed into row objects. The tool truncates after `limit` rows (default 500) but reports the total row count.
 - Expect a real `.p8` file path (or PEM string). The MCP signs short-lived (20-minute) ES256 JWTs locally — your private key never leaves the machine.

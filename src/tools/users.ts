@@ -1,7 +1,8 @@
-import { McpServer } from '@modelcontextprotocol/server';
+import { McpServer, type InputRequiredResult, type ServerContext } from '@modelcontextprotocol/server';
 import { z } from 'zod';
-import { minifiedResult, schemaConfirm } from '@chrischall/mcp-utils';
+import { confirmTokenParam, minifiedResult } from '@chrischall/mcp-utils';
 import { client, paginate, pageSize, paginateOpts } from '../client.js';
+import { CONFIRM_FLOW, confirmWrite } from '../confirm.js';
 import { AscEnvelope, AscResource, ToolResult } from '../types.js';
 
 interface UserAttrs {
@@ -85,8 +86,8 @@ export async function inviteUser(args: {
   allAppsVisible?: boolean;
   provisioningAllowed?: boolean;
   visibleAppIds?: string[];
-  confirm?: boolean;
-}): Promise<ToolResult> {
+  confirmToken?: string;
+}, ctx: ServerContext): Promise<ToolResult | InputRequiredResult> {
   const relationships: Record<string, { data: { id: string; type: string }[] }> = {};
   if (args.visibleAppIds?.length) {
     relationships.visibleApps = { data: args.visibleAppIds.map((id) => ({ id, type: 'apps' })) };
@@ -105,16 +106,17 @@ export async function inviteUser(args: {
       ...(Object.keys(relationships).length > 0 ? { relationships } : {}),
     },
   };
-  if (args.confirm !== true) {
-    return minifiedResult({
-      dryRun: true,
-      action: `Invite ${args.email} to your App Store Connect team with roles [${args.roles.join(', ')}] (sends a real email; roles can include ADMIN)`,
-      method: 'POST',
-      path: '/v1/userInvitations',
-      willSend: body,
-      note: 'Dry run — re-run with confirm:true to send the invitation.',
-    });
-  }
+  const gate = await confirmWrite(ctx, args.confirmToken, {
+    tool: 'invite_user',
+    action: 'user.invite',
+    message: 'Review and confirm this team invitation (sends a real email):',
+    target: args.email,
+    summary: `Invite ${args.email} to your App Store Connect team with roles [${args.roles.join(', ')}] (sends a real email; roles can include ADMIN)`,
+    method: 'POST',
+    path: '/v1/userInvitations',
+    body,
+  });
+  if (gate) return gate;
   const response = await client.request<AscEnvelope<AscResource<UserInvitationAttrs>>>('POST', '/v1/userInvitations', body);
   return minifiedResult({ id: response.data.id, ...response.data.attributes });
 }
@@ -152,7 +154,7 @@ export function registerUserTools(server: McpServer): void {
   server.registerTool(
     'invite_user',
     {
-      description: 'Invite a new user to your App Store Connect team with specified roles (sends a real email; roles can include ADMIN). Without confirm:true this returns a dry-run preview and makes NO network call; with confirm:true it sends the invitation.',
+      description: 'Invite a new user to your App Store Connect team with specified roles (sends a real email; roles can include ADMIN). ' + CONFIRM_FLOW,
       inputSchema: z.object({
         email: z.string().email().describe("User's email"),
         firstName: z.string().describe('First name'),
@@ -161,7 +163,7 @@ export function registerUserTools(server: McpServer): void {
         allAppsVisible: z.boolean().optional().describe('Grant access to all apps. Default: true unless visibleAppIds is provided.'),
         provisioningAllowed: z.boolean().optional().describe('Allow access to provisioning (certificates/profiles). Default false.'),
         visibleAppIds: z.array(z.string()).optional().describe('Restrict visibility to these app IDs. If provided, allAppsVisible defaults to false.'),
-        confirm: schemaConfirm,
+        confirmToken: confirmTokenParam,
       }),
       annotations: { destructiveHint: true },
     },

@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createTestHarness } from '@chrischall/mcp-utils/test';
+import type { ServerContext } from '@modelcontextprotocol/server';
+import { writeHarness, phaseOne } from './helpers.js';
 import { client, idSegment } from '../src/client.js';
 import { getApp, listAppStoreVersions, getAppInfos, registerAppTools } from '../src/tools/apps.js';
 import {
@@ -14,6 +16,8 @@ import { listCustomerReviews, getCustomerReview, registerReviewTools } from '../
 // A dot-segment payload: new URL('/v1/betaTesters/x/../../betaGroups/G1', base)
 // resolves to /v1/betaGroups/G1, so an unvalidated ID retargets the request.
 const TRAVERSAL = 'x/../../betaGroups/G1';
+// The ID guard runs before the confirmation gate, so no context is ever read.
+const NO_CTX = {} as ServerContext;
 const BAD_IDS = [TRAVERSAL, '..', 'a/b', 'a?b=c', 'a#frag', 'a%2F..', 'a b', ''];
 
 describe('idSegment', () => {
@@ -44,11 +48,11 @@ describe('ID path segments cannot retarget requests', () => {
     ['listAppStoreVersions', () => listAppStoreVersions({ appId: TRAVERSAL })],
     ['getAppInfos', () => getAppInfos({ appId: TRAVERSAL })],
     ['getBuild', () => getBuild({ buildId: TRAVERSAL })],
-    ['deleteBetaTester (confirm)', () => deleteBetaTester({ betaTesterId: TRAVERSAL, confirm: true })],
-    ['deleteBetaTester (dry run)', () => deleteBetaTester({ betaTesterId: TRAVERSAL })],
-    ['addTestersToBetaGroup', () => addTestersToBetaGroup({ betaGroupId: TRAVERSAL, betaTesterIds: ['t1'], confirm: true })],
-    ['addTestersToBetaGroup (dry run)', () => addTestersToBetaGroup({ betaGroupId: TRAVERSAL, betaTesterIds: ['t1'] })],
-    ['removeTestersFromBetaGroup', () => removeTestersFromBetaGroup({ betaGroupId: TRAVERSAL, betaTesterIds: ['t1'], confirm: true })],
+    ['deleteBetaTester (phase 1)', () => deleteBetaTester({ betaTesterId: TRAVERSAL }, NO_CTX)],
+    ['deleteBetaTester (phase 2)', () => deleteBetaTester({ betaTesterId: TRAVERSAL, confirmToken: 'mcpu.token.v1.x.y' }, NO_CTX)],
+    ['addTestersToBetaGroup (phase 1)', () => addTestersToBetaGroup({ betaGroupId: TRAVERSAL, betaTesterIds: ['t1'] }, NO_CTX)],
+    ['addTestersToBetaGroup (phase 2)', () => addTestersToBetaGroup({ betaGroupId: TRAVERSAL, betaTesterIds: ['t1'], confirmToken: 'mcpu.token.v1.x.y' }, NO_CTX)],
+    ['removeTestersFromBetaGroup', () => removeTestersFromBetaGroup({ betaGroupId: TRAVERSAL, betaTesterIds: ['t1'] }, NO_CTX)],
     ['listCustomerReviews', () => listCustomerReviews({ appId: TRAVERSAL })],
     ['getCustomerReview', () => getCustomerReview({ reviewId: TRAVERSAL })],
   ];
@@ -58,12 +62,16 @@ describe('ID path segments cannot retarget requests', () => {
     expect(reqSpy).not.toHaveBeenCalled();
   });
 
-  it('dry-run preview path is exactly the path that will be sent', async () => {
-    const preview = await deleteBetaTester({ betaTesterId: 'abc-123' });
-    const parsed = JSON.parse(preview.content[0].text);
-    reqSpy.mockResolvedValueOnce(null as never);
-    await deleteBetaTester({ betaTesterId: 'abc-123', confirm: true });
-    expect(reqSpy).toHaveBeenCalledWith('DELETE', parsed.path);
+  it('the previewed path is exactly the path that will be sent', async () => {
+    const harness = await writeHarness();
+    try {
+      const { preview, confirmToken } = await phaseOne(harness, 'delete_beta_tester', { betaTesterId: 'abc-123' });
+      reqSpy.mockResolvedValueOnce(null as never);
+      await harness.callTool('delete_beta_tester', { betaTesterId: 'abc-123', confirmToken });
+      expect(reqSpy).toHaveBeenCalledWith('DELETE', preview.path);
+    } finally {
+      await harness.close();
+    }
   });
 });
 
@@ -76,7 +84,7 @@ describe('ID schemas over MCP', () => {
       registerReviewTools(server);
     });
     try {
-      const result = await harness.callTool('delete_beta_tester', { betaTesterId: TRAVERSAL, confirm: true });
+      const result = await harness.callTool('delete_beta_tester', { betaTesterId: TRAVERSAL });
       expect(result.isError).toBe(true);
       expect(reqSpy).not.toHaveBeenCalled();
 
