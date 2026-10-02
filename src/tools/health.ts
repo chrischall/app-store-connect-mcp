@@ -1,5 +1,5 @@
 import type { McpServer } from '@modelcontextprotocol/server';
-import { readEnvVar } from '@chrischall/mcp-utils';
+import { EdgeBlockedError, readEnvVar } from '@chrischall/mcp-utils';
 import { registerCredentialHealthcheckTool } from '@chrischall/mcp-utils/healthcheck';
 import { client as defaultClient } from '../client.js';
 
@@ -32,6 +32,10 @@ function describeMissing(readEnv: ReadEnv): string | null {
 }
 
 export function classifyAscError(err: unknown): { kind: string; hint?: string } | undefined {
+  // A CDN/WAF refusal page (mcp-utils maps even a 401 one to EdgeBlockedError,
+  // whose message says "HTTP 401") never reached Apple, so the JWT was not
+  // judged. Decline it and let the helper report `edge_blocked`.
+  if (err instanceof EdgeBlockedError) return undefined;
   const msg = err instanceof Error ? err.message : String(err);
 
   // Our own resolver message, carried through so the hint names the specific
