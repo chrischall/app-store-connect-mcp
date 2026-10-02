@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { McpServer } from '@modelcontextprotocol/server';
+import { EdgeBlockedError } from '@chrischall/mcp-utils';
 import { registerHealthcheckTools } from '../src/tools/health.js';
 
 function setup(env: Record<string, string | undefined>, probe?: () => Promise<unknown>) {
@@ -80,6 +81,16 @@ describe('asc_healthcheck', () => {
     const out = await setup(FULL, async () => { throw new Error('HTTP 401 Unauthorized'); }).call();
     expect(out.error.kind).toBe('credential_rejected');
     expect(out.hint).toMatch(/revoked|expired|clock/i);
+  });
+
+  // mcp-utils 2.10.0 maps a 401 that is a CDN/WAF refusal page to
+  // EdgeBlockedError, whose message carries "HTTP 401". The credential was
+  // never evaluated, so this must not be reported as a rejected key.
+  it('reports a CDN/WAF block as edge_blocked, even on a 401', async () => {
+    const out = await setup(FULL, async () => {
+      throw new EdgeBlockedError(401, 'CloudFront', { service: 'App Store Connect', method: 'GET', path: '/v1/apps' });
+    }).call();
+    expect(out.error.kind).toBe('edge_blocked');
   });
 
   it('leaves an unrecognised failure to the helper defaults', async () => {
