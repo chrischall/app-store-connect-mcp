@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.2](https://github.com/chrischall/app-store-connect-mcp/compare/v1.2.1...v1.2.2) (2026-10-03)
+
+
+### Bug Fixes
+
+* **deps:** bump @chrischall/mcp-utils to 2.12.0 ([#128](https://github.com/chrischall/app-store-connect-mcp/issues/128)) ([cd1099b](https://github.com/chrischall/app-store-connect-mcp/commit/cd1099b015cfc7ad0306e1a8cb29601e43063af0))
+* **deps:** bump @chrischall/mcp-utils to 2.13.0 ([#129](https://github.com/chrischall/app-store-connect-mcp/issues/129)) ([b9f8e93](https://github.com/chrischall/app-store-connect-mcp/commit/b9f8e931326f3eb470886a0e11a51b03b5601482))
+* **deps:** Bump the production-dependencies group with 3 updates ([#123](https://github.com/chrischall/app-store-connect-mcp/issues/123)) ([d53adac](https://github.com/chrischall/app-store-connect-mcp/commit/d53adac66d1ec6802bbd11eda41d7885a25f0263))
+* keep credentials and report edge_blocked on CDN/WAF blocks (mcp-utils 2.10.0) ([#126](https://github.com/chrischall/app-store-connect-mcp/issues/126)) ([f127387](https://github.com/chrischall/app-store-connect-mcp/commit/f1273873b7a7f32844db24de6df4da1f563f3958))
+* keep write approvals valid across a hosted restart (mcp-utils 2.11.0) ([#127](https://github.com/chrischall/app-store-connect-mcp/issues/127)) ([55cda13](https://github.com/chrischall/app-store-connect-mcp/commit/55cda13d25be3e1f7028fc156eb23910ce907722))
+* report CDN/WAF blocks as edge_blocked, not a rejected credential (mcp-utils 2.9.0) ([#125](https://github.com/chrischall/app-store-connect-mcp/issues/125)) ([6174841](https://github.com/chrischall/app-store-connect-mcp/commit/61748414cb49bcb347815417dbee2317b52dd282))
+
 ## [1.2.1](https://github.com/chrischall/app-store-connect-mcp/compare/v1.2.0...v1.2.1) (2026-09-24)
 
 
