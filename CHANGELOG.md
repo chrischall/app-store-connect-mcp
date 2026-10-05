@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.3](https://github.com/chrischall/app-store-connect-mcp/compare/v1.2.2...v1.2.3) (2026-10-05)
+
+
+### Bug Fixes
+
+* **deps:** require @chrischall/mcp-utils 2.14.0 and MCP SDK 2.3.0 ([#130](https://github.com/chrischall/app-store-connect-mcp/issues/130)) ([ff92b3a](https://github.com/chrischall/app-store-connect-mcp/commit/ff92b3a6d4a7e228afcdd4be4717cf64e2931c4f))
+
 ## [1.2.2](https://github.com/chrischall/app-store-connect-mcp/compare/v1.2.1...v1.2.2) (2026-10-03)
 
 
