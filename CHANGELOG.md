@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.3.0](https://github.com/chrischall/app-store-connect-mcp/compare/v1.2.3...v1.3.0) (2026-10-07)
+
+
+### Features
+
+* **deps:** support MCP_CONFIRM_ELICITATION=off for clients that never show confirmation prompts ([#137](https://github.com/chrischall/app-store-connect-mcp/issues/137)) ([c05bac7](https://github.com/chrischall/app-store-connect-mcp/commit/c05bac734f7a456e0115aff1a600022968b07a2a))
+
+
+### Bug Fixes
+
+* **deps:** Bump dotenv ([#134](https://github.com/chrischall/app-store-connect-mcp/issues/134)) ([b4625cc](https://github.com/chrischall/app-store-connect-mcp/commit/b4625cc110666efc787080ae6e312340c3964bab))
+* **deps:** Bump source-map-js ([#136](https://github.com/chrischall/app-store-connect-mcp/issues/136)) ([28b58b2](https://github.com/chrischall/app-store-connect-mcp/commit/28b58b2e5b91e8287498eaa0d92e8c8fa0fc36cd))
+
+
+### Documentation
+
+* document MCP_CONFIRM_ELICITATION ([#139](https://github.com/chrischall/app-store-connect-mcp/issues/139)) ([ec0e5b1](https://github.com/chrischall/app-store-connect-mcp/commit/ec0e5b18896e875b0c2605cd13da7b03f86ed3c3))
+
 ## [1.2.3](https://github.com/chrischall/app-store-connect-mcp/compare/v1.2.2...v1.2.3) (2026-10-05)
 
 
