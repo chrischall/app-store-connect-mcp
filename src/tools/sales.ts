@@ -5,24 +5,42 @@ import { minifiedResult } from '@chrischall/mcp-utils';
 import { client } from '../client.js';
 import { ToolResult } from '../types.js';
 
+interface ParsedReport {
+  rows: Array<Record<string, string>>;
+  /** Trailer lines such as `Total_Rows` / `Total_Amount` / `Total_Units`, keyed by first cell. */
+  summary: Record<string, string>;
+}
+
 /**
- * Convert a gzipped TSV report buffer to an array of row objects.
- * App Store Connect sales/finance reports always come back gzipped.
+ * Convert a gzipped TSV report buffer to row objects plus any summary lines.
+ * App Store Connect sales/finance reports always come back gzipped. Finance
+ * reports end with `Total_*` trailer lines (and detail reports can repeat the
+ * header per section); those are not data rows, so a line whose first cell is
+ * `Total_*` or whose cell count differs from the header goes to `summary`, and
+ * a repeated header line is skipped.
  */
-function parseGzippedTsv(buffer: Buffer): Array<Record<string, string>> {
+function parseGzippedTsv(buffer: Buffer): ParsedReport {
   const text = gunzipSync(buffer).toString('utf8');
   const lines = text.split(/\r?\n/).filter((l) => l.length > 0);
-  if (lines.length === 0) return [];
+  const summary: Record<string, string> = {};
+  if (lines.length === 0) return { rows: [], summary };
   const headerLine = lines[0]!;
   const headers = headerLine.split('\t');
-  return lines.slice(1).map((line) => {
+  const rows: Array<Record<string, string>> = [];
+  for (const line of lines.slice(1)) {
+    if (line === headerLine) continue;
     const cells = line.split('\t');
+    if (cells.length !== headers.length || /^Total_/.test(cells[0] ?? '')) {
+      summary[cells[0]!] = cells.slice(1).join('\t');
+      continue;
+    }
     const row: Record<string, string> = {};
     headers.forEach((h, i) => {
       row[h] = cells[i] ?? '';
     });
-    return row;
-  });
+    rows.push(row);
+  }
+  return { rows, summary };
 }
 
 export async function downloadSalesReport(args: {
@@ -42,7 +60,7 @@ export async function downloadSalesReport(args: {
     'filter[reportSubType]': args.reportSubType ?? 'SUMMARY',
     'filter[version]': args.version ?? '1_0',
   });
-  const rows = parseGzippedTsv(buffer);
+  const { rows, summary } = parseGzippedTsv(buffer);
   const limit = args.limit ?? 500;
   const truncated = rows.length > limit;
   const preview = truncated ? rows.slice(0, limit) : rows;
@@ -54,6 +72,7 @@ export async function downloadSalesReport(args: {
     returnedRows: preview.length,
     truncated,
     rows: preview,
+    ...(Object.keys(summary).length > 0 ? { summary } : {}),
   });
 }
 
@@ -70,7 +89,7 @@ export async function downloadFinanceReport(args: {
     'filter[regionCode]': args.regionCode,
     'filter[reportType]': args.reportType ?? 'FINANCIAL',
   });
-  const rows = parseGzippedTsv(buffer);
+  const { rows, summary } = parseGzippedTsv(buffer);
   const limit = args.limit ?? 500;
   const truncated = rows.length > limit;
   const preview = truncated ? rows.slice(0, limit) : rows;
@@ -82,6 +101,7 @@ export async function downloadFinanceReport(args: {
     returnedRows: preview.length,
     truncated,
     rows: preview,
+    ...(Object.keys(summary).length > 0 ? { summary } : {}),
   });
 }
 
