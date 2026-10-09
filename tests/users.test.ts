@@ -116,6 +116,7 @@ describe('users tools', () => {
     ['neither allAppsVisible nor visibleAppIds (no silent all-apps default)', {}, /allAppsVisible.*visibleAppIds/],
     ['an empty visibleAppIds', { visibleAppIds: [] }, /visibleAppIds/],
     ['allAppsVisible:true together with visibleAppIds', { allAppsVisible: true, visibleAppIds: ['app1'] }, /allAppsVisible.*visibleAppIds/],
+    ['allAppsVisible:false without visibleAppIds (an invite that sees no apps)', { allAppsVisible: false }, /allAppsVisible.*visibleAppIds/],
   ])('inviteUser: rejects %s before any preview or request', async (_label, extra, message) => {
     const harness = await writeHarness();
     try {

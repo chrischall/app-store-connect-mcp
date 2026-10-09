@@ -97,7 +97,9 @@ export async function inviteUser(args: {
   if (args.allAppsVisible === true && args.visibleAppIds !== undefined) {
     throw new Error('allAppsVisible: true conflicts with visibleAppIds: pass one or the other.');
   }
-  if (args.allAppsVisible === undefined && args.visibleAppIds === undefined) {
+  // Anything short of allAppsVisible: true needs a list — omitting both, or
+  // allAppsVisible: false alone, would invite a user who sees no apps.
+  if (args.allAppsVisible !== true && args.visibleAppIds === undefined) {
     throw new Error('Choose app visibility explicitly: pass allAppsVisible: true to grant every app, or visibleAppIds to restrict access to specific apps.');
   }
   const relationships: Record<string, { data: { id: string; type: string }[] }> = {};
@@ -172,7 +174,7 @@ export function registerUserTools(server: McpServer): void {
         firstName: z.string().describe('First name'),
         lastName: z.string().describe('Last name'),
         roles: z.array(z.enum(ROLE_VALUES)).min(1).describe('Roles to assign'),
-        allAppsVisible: z.boolean().optional().describe('Grant access to all apps. Required (true) unless visibleAppIds is provided; cannot be combined with visibleAppIds.'),
+        allAppsVisible: z.boolean().optional().describe('Grant access to all apps. Must be true unless visibleAppIds is provided (false alone is refused: it would invite a user who sees no apps); cannot be combined with visibleAppIds.'),
         provisioningAllowed: z.boolean().optional().describe('Allow access to provisioning (certificates/profiles). Default false.'),
         visibleAppIds: z.array(z.string()).min(1).optional().describe('Restrict visibility to these app IDs (at least one). Required unless allAppsVisible is set.'),
         confirmToken: confirmTokenParam,
