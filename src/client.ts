@@ -5,7 +5,6 @@ import {
   createApiClient,
   createCachedTokenSource,
   signEs256Jwt,
-  formatApiError,
   loadDotenvSafely,
   readEnvVar,
   expandPath,
@@ -189,30 +188,14 @@ export class AppStoreConnectClient {
 
   /**
    * Make an authenticated request and return the raw response body as a Buffer.
-   * Used for sales/finance report downloads which return gzipped TSVs — a thin
-   * local raw-fetch path (the shared client has no fetchRaw), sharing the same
-   * withAuth re-mint/replay, one-shot 429 retry, and timeout.
+   * Used for sales/finance report downloads, which return gzipped TSVs. Goes
+   * through the shared client's `fetchRaw`, so reports get the same withAuth
+   * re-mint/replay, 429 handling (incl. Retry-After), 401 mapping, redacted
+   * errors and timeout as JSON tools.
    */
   async requestRaw(method: HttpMethod, path: string, query?: Record<string, string | number | string[] | undefined>): Promise<{ buffer: Buffer; contentType: string | null }> {
-    const url = buildUrl(path, query);
-    const doFetch = (token: string): Promise<Response> =>
-      fetch(url, {
-        method,
-        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-      });
-
-    let response = await this.withAuth(doFetch);
-    if (response.status === 429) {
-      await new Promise<void>((r) => setTimeout(r, 2000));
-      response = await this.withAuth(doFetch);
-    }
-    if (!response.ok) {
-      const text = await response.text().catch(() => '');
-      throw new Error(formatApiError(response.status, method, path, text, { service: SERVICE_NAME }));
-    }
-    const arrayBuffer = await response.arrayBuffer();
-    return { buffer: Buffer.from(arrayBuffer), contentType: response.headers.get('content-type') };
+    const res = await this.api.fetchRaw(method, apiPath(path, query), { headers: { Accept: 'application/a-gzip' } });
+    return { buffer: Buffer.from(res.bytes), contentType: res.contentType };
   }
 }
 

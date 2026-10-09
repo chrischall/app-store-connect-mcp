@@ -336,6 +336,23 @@ describe('AppStoreConnectClient.requestRaw', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it('asks for a gzip report (not JSON) and keeps the comma-joined query', async () => {
+    fetchMock.mockResolvedValueOnce(makeResponse(Buffer.from([0x1f, 0x8b]), 200, 'application/a-gzip'));
+    const c = new AppStoreConnectClient();
+    await c.requestRaw('GET', '/v1/salesReports', { 'filter[vendorNumber]': '8001', 'fields[x]': ['a', 'b'] });
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(String(url)).toBe(`${API_BASE}/v1/salesReports?filter%5BvendorNumber%5D=8001&fields%5Bx%5D=a%2Cb`);
+    const headers = new Headers(init.headers as HeadersInit);
+    expect(headers.get('accept')).toBe('application/a-gzip');
+  });
+
+  it('maps a 401 that persists after the re-mint replay to the shared unauthorized error, like JSON tools', async () => {
+    fetchMock.mockResolvedValue(makeResponse('', 401));
+    const c = new AppStoreConnectClient();
+    await expect(c.requestRaw('GET', '/v1/salesReports')).rejects.toThrow(/[Uu]nauthorized/);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it('passes a timeout AbortSignal to fetch', async () => {
     fetchMock.mockResolvedValueOnce(makeResponse(Buffer.from([0x1f, 0x8b])));
     const c = new AppStoreConnectClient();
