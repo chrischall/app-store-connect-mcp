@@ -184,8 +184,7 @@ export class AppStoreConnectClient {
   async request<T>(method: HttpMethod, path: string, body?: unknown, query?: Record<string, string | number | string[] | undefined>): Promise<T> {
     // buildUrl keeps Apple's comma-joined array convention (the shared
     // buildQueryString expands arrays as repeated keys, which ASC rejects).
-    const pathWithQuery = buildUrl(path, query).slice(API_BASE.length);
-    return this.api.fetchJson<T>(method, pathWithQuery, body !== undefined ? { body } : {});
+    return this.api.fetchJson<T>(method, apiPath(path, query), body !== undefined ? { body } : {});
   }
 
   /**
@@ -236,6 +235,19 @@ export function buildUrl(path: string, query?: Record<string, string | number | 
     }
   }
   return url.toString();
+}
+
+/**
+ * {@link buildUrl}, reduced to the path+query relative to {@link API_BASE} that
+ * the shared client takes. Extracted from the parsed URL (not a fixed-offset
+ * slice), and an absolute URL on another origin is refused rather than mangled.
+ */
+function apiPath(path: string, query?: Record<string, string | number | string[] | undefined>): string {
+  const url = new URL(buildUrl(path, query));
+  if (url.origin !== new URL(API_BASE).origin) {
+    throw new Error(`Refusing off-host request: ${JSON.stringify(path)} is not on the App Store Connect API (${API_BASE})`);
+  }
+  return `${url.pathname}${url.search}`;
 }
 
 export const client = new AppStoreConnectClient();
@@ -302,8 +314,8 @@ export interface PaginatedResult<T> {
 /**
  * Reduce an absolute App Store Connect `links.next` URL to a path+query relative
  * to {@link API_BASE} so it can be fed back into {@link AppStoreConnectClient.request}
- * (which takes a path). Returns `undefined` if the URL points off-host (defensive;
- * ASC always returns same-host cursors).
+ * (which takes a path). Returns `undefined` if the URL points off-host; {@link paginate}
+ * then stops with `has_more: true` instead of following it.
  */
 export function nextUrlToPath(nextUrl: string): string | undefined {
   let parsed: URL;
@@ -340,9 +352,19 @@ export async function paginate<T = AscResource>(
   let hasMore = false;
 
   while (pages < maxPages) {
-    const response: AscEnvelope<T[]> = nextUrl
-      ? await client.request<AscEnvelope<T[]>>('GET', nextUrlToPath(nextUrl) ?? nextUrl)
-      : await client.request<AscEnvelope<T[]>>('GET', path, undefined, query);
+    let response: AscEnvelope<T[]>;
+    if (nextUrl) {
+      const nextPath = nextUrlToPath(nextUrl);
+      if (nextPath === undefined) {
+        // Off-host (or unparseable) cursor: never follow it. Stop and report
+        // that the API advertised more than we returned.
+        hasMore = true;
+        break;
+      }
+      response = await client.request<AscEnvelope<T[]>>('GET', nextPath);
+    } else {
+      response = await client.request<AscEnvelope<T[]>>('GET', path, undefined, query);
+    }
     pages += 1;
 
     const pageItems = response.data ?? [];

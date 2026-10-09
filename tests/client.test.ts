@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { generateKeyPairSync, createPublicKey, createVerify } from 'crypto';
-import { AppStoreConnectClient, mintJwt, buildUrl } from '../src/client.js';
+import { AppStoreConnectClient, mintJwt, buildUrl, API_BASE } from '../src/client.js';
 
 function generateP256Pem(): { privatePem: string; publicPem: string } {
   const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
@@ -257,6 +257,16 @@ describe('AppStoreConnectClient.request', () => {
     fetchMock.mockResolvedValueOnce(makeResponse({ errors: [{ title: 'Forbidden' }] }, 403));
     const c = new AppStoreConnectClient();
     await expect(c.request('GET', '/v1/apps')).rejects.toThrow(/App Store Connect error 403 for GET \/v1\/apps.*Forbidden/);
+  });
+
+  it('sends the URL path+query (not a fixed-offset slice) and refuses an off-host absolute URL', async () => {
+    fetchMock.mockResolvedValueOnce(makeResponse({ data: [] }));
+    const c = new AppStoreConnectClient();
+    await c.request('GET', '/v1/apps?cursor=A', undefined, { limit: 5 });
+    expect(String(fetchMock.mock.calls[0]![0])).toBe(`${API_BASE}/v1/apps?cursor=A&limit=5`);
+
+    await expect(c.request('GET', 'https://evil.example.com/v1/apps?cursor=X')).rejects.toThrow(/off-host|App Store Connect API/);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('strips `${...}` placeholder env values', async () => {
