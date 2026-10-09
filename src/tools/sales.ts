@@ -129,7 +129,7 @@ export function registerSalesTools(server: McpServer): void {
         version: z.string().optional().describe('Report version (default 1_0). Newer SALES reports use 1_1 with extra columns.'),
         limit: z.number().int().min(1).max(10000).optional().describe('Max rows to return inline (default 500). Total row count is always reported.'),
       }),
-      annotations: { readOnlyHint: true },
+      annotations: { readOnlyHint: true, openWorldHint: true },
     },
     downloadSalesReport
   );
@@ -146,7 +146,7 @@ export function registerSalesTools(server: McpServer): void {
         reportType: z.enum(['FINANCIAL', 'FINANCE_DETAIL']).optional().describe('Report type (default FINANCIAL)'),
         limit: z.number().int().min(1).max(10000).optional().describe('Max rows to return inline (default 500)'),
       }),
-      annotations: { readOnlyHint: true },
+      annotations: { readOnlyHint: true, openWorldHint: true },
     },
     downloadFinanceReport
   );

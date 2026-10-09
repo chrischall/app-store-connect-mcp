@@ -147,7 +147,7 @@ export function registerUserTools(server: McpServer): void {
         username: z.string().optional().describe('Exact username (email) filter'),
         roles: z.array(z.enum(ROLE_VALUES)).optional().describe('Filter by one or more roles'),
       }),
-      annotations: { readOnlyHint: true },
+      annotations: { readOnlyHint: true, openWorldHint: true },
     },
     listUsers
   );
@@ -161,7 +161,7 @@ export function registerUserTools(server: McpServer): void {
         auto_paginate: z.boolean().optional().describe('Follow links.next across pages until the limit is reached (default false).'),
         email: z.string().optional().describe('Exact email filter'),
       }),
-      annotations: { readOnlyHint: true },
+      annotations: { readOnlyHint: true, openWorldHint: true },
     },
     listUserInvitations
   );
@@ -180,7 +180,7 @@ export function registerUserTools(server: McpServer): void {
         visibleAppIds: z.array(z.string()).min(1).optional().describe('Restrict visibility to these app IDs (at least one). Required unless allAppsVisible is set.'),
         confirmToken: confirmTokenParam,
       }),
-      annotations: { destructiveHint: true },
+      annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     },
     inviteUser
   );

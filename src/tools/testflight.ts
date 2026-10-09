@@ -230,7 +230,7 @@ export function registerTestFlightTools(server: McpServer): void {
         processingState: z.enum(['PROCESSING', 'FAILED', 'INVALID', 'VALID']).optional().describe('Filter by processing state'),
         version: z.string().optional().describe('Filter by build version (e.g. "42")'),
       }),
-      annotations: { readOnlyHint: true },
+      annotations: { readOnlyHint: true, openWorldHint: true },
     },
     listBuilds
   );
@@ -240,7 +240,7 @@ export function registerTestFlightTools(server: McpServer): void {
     {
       description: 'Get a single build by ID — version, processing state, expiration, encryption flag.',
       inputSchema: z.object({ buildId: ascId.describe('Build ID') }),
-      annotations: { readOnlyHint: true },
+      annotations: { readOnlyHint: true, openWorldHint: true },
     },
     getBuild
   );
@@ -255,7 +255,7 @@ export function registerTestFlightTools(server: McpServer): void {
         auto_paginate: z.boolean().optional().describe('Follow links.next across pages until the limit is reached (default false).'),
         isInternalGroup: z.boolean().optional().describe('true = internal-only, false = external'),
       }),
-      annotations: { readOnlyHint: true },
+      annotations: { readOnlyHint: true, openWorldHint: true },
     },
     listBetaGroups
   );
@@ -271,7 +271,7 @@ export function registerTestFlightTools(server: McpServer): void {
         limit: z.number().int().min(1).max(1000).optional().describe('Max testers (default 100). With auto_paginate this is the total across pages.'),
         auto_paginate: z.boolean().optional().describe('Follow links.next across pages until the limit is reached (default false).'),
       }),
-      annotations: { readOnlyHint: true },
+      annotations: { readOnlyHint: true, openWorldHint: true },
     },
     listBetaTesters
   );
@@ -288,7 +288,7 @@ export function registerTestFlightTools(server: McpServer): void {
         buildIds: z.array(z.string()).optional().describe('Specific build IDs to grant the tester access to'),
         confirmToken: confirmTokenParam,
       }),
-      annotations: { destructiveHint: true },
+      annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     },
     inviteBetaTester
   );
@@ -298,7 +298,7 @@ export function registerTestFlightTools(server: McpServer): void {
     {
       description: 'Permanently remove a beta tester from your team. ' + CONFIRM_FLOW,
       inputSchema: z.object({ betaTesterId: ascId.describe('Beta tester ID'), confirmToken: confirmTokenParam }),
-      annotations: { destructiveHint: true },
+      annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     },
     deleteBetaTester
   );
@@ -312,7 +312,7 @@ export function registerTestFlightTools(server: McpServer): void {
         betaTesterIds: z.array(z.string()).min(1).describe('IDs of beta testers to add'),
         confirmToken: confirmTokenParam,
       }),
-      annotations: { destructiveHint: true },
+      annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     },
     addTestersToBetaGroup
   );
@@ -326,7 +326,7 @@ export function registerTestFlightTools(server: McpServer): void {
         betaTesterIds: z.array(z.string()).min(1).describe('IDs of beta testers to remove'),
         confirmToken: confirmTokenParam,
       }),
-      annotations: { destructiveHint: true },
+      annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     },
     removeTestersFromBetaGroup
   );
@@ -336,7 +336,7 @@ export function registerTestFlightTools(server: McpServer): void {
     {
       description: 'Submit a build for TestFlight beta app review (required before external testing) — submits to Apple. ' + CONFIRM_FLOW,
       inputSchema: z.object({ buildId: ascId.describe('Build ID to submit'), confirmToken: confirmTokenParam }),
-      annotations: { destructiveHint: true },
+      annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     },
     submitBuildForBetaReview
   );
