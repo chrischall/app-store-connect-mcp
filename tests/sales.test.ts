@@ -77,6 +77,34 @@ describe('sales tools', () => {
     });
   });
 
+  it('downloadFinanceReport: keeps trailing Total_* summary lines out of the data rows', async () => {
+    const tsv = [
+      'Start Date\tEnd Date\tUnits\tPartner Share',
+      '09/01/2025\t09/30/2025\t3\t2.10',
+      '09/01/2025\t09/30/2025\t1\t0.70',
+      '',
+      'Total_Rows\t2',
+      'Total_Amount\t2.80',
+      'Total_Units\t4',
+    ].join('\n');
+    rawSpy.mockResolvedValueOnce({ buffer: gzipSync(Buffer.from(tsv, 'utf8')), contentType: 'application/a-gzip' });
+
+    const result = await downloadFinanceReport({ vendorNumber: '8001', reportDate: '2025-09', regionCode: 'US' });
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.totalRows).toBe(2);
+    expect(parsed.rows).toHaveLength(2);
+    expect(parsed.rows.every((r: Record<string, string>) => r['Start Date'] === '09/01/2025')).toBe(true);
+    expect(parsed.summary).toEqual({ Total_Rows: '2', Total_Amount: '2.80', Total_Units: '4' });
+  });
+
+  it('downloadSalesReport: omits summary when the report has none', async () => {
+    rawSpy.mockResolvedValueOnce({ buffer: makeGzippedTsv([['A', 'B'], ['1', '2']]), contentType: 'application/a-gzip' });
+    const result = await downloadSalesReport({ vendorNumber: '8001', reportDate: '2025-09-15' });
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.totalRows).toBe(1);
+    expect(parsed).not.toHaveProperty('summary');
+  });
+
   it('downloadFinanceReport: builds correct query', async () => {
     const buf = makeGzippedTsv([['a', 'b'], ['1', '2']]);
     rawSpy.mockResolvedValueOnce({ buffer: buf, contentType: 'application/a-gzip' });

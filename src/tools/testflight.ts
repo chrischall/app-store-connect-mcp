@@ -35,7 +35,7 @@ interface BetaTesterAttrs {
 
 export async function listBuilds(args: { appId?: string; limit?: number; processingState?: string; version?: string; auto_paginate?: boolean } = {}): Promise<ToolResult> {
   const { items, pagination } = await paginate<AscResource<BuildAttrs>>('/v1/builds', {
-    limit: pageSize(args.limit, 25, args.auto_paginate),
+    limit: pageSize(args.limit, 25),
     'filter[app]': args.appId,
     'filter[processingState]': args.processingState,
     'filter[version]': args.version,
@@ -60,7 +60,7 @@ export async function getBuild(args: { buildId: string }): Promise<ToolResult> {
 
 export async function listBetaGroups(args: { appId?: string; limit?: number; isInternalGroup?: boolean; auto_paginate?: boolean } = {}): Promise<ToolResult> {
   const { items, pagination } = await paginate<AscResource<BetaGroupAttrs>>('/v1/betaGroups', {
-    limit: pageSize(args.limit, 50, args.auto_paginate),
+    limit: pageSize(args.limit, 50),
     'filter[app]': args.appId,
     'filter[isInternalGroup]': args.isInternalGroup === undefined ? undefined : String(args.isInternalGroup),
   }, paginateOpts(args, 50));
@@ -77,7 +77,7 @@ export async function listBetaGroups(args: { appId?: string; limit?: number; isI
 
 export async function listBetaTesters(args: { appId?: string; betaGroupId?: string; email?: string; limit?: number; auto_paginate?: boolean } = {}): Promise<ToolResult> {
   const { items, pagination } = await paginate<AscResource<BetaTesterAttrs>>('/v1/betaTesters', {
-    limit: pageSize(args.limit, 100, args.auto_paginate),
+    limit: pageSize(args.limit, 100),
     'filter[apps]': args.appId,
     'filter[betaGroups]': args.betaGroupId,
     'filter[email]': args.email,

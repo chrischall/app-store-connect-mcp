@@ -36,7 +36,7 @@ export async function listCustomerReviews(args: { appId: string; limit?: number;
   const { items, pagination } = await paginate<AscResource<CustomerReviewAttrs>>(
     `/v1/apps/${idSegment(args.appId)}/customerReviews`,
     {
-      limit: pageSize(args.limit, 50, args.auto_paginate),
+      limit: pageSize(args.limit, 50),
       'filter[rating]': args.rating === undefined ? undefined : String(args.rating),
       'filter[territory]': args.territory,
       sort: args.sort ?? '-createdDate',

@@ -99,6 +99,16 @@ describe('paginate', () => {
     expect(reqSpy).toHaveBeenCalledTimes(4);
   });
 
+  it('stops (has_more) instead of requesting an off-host links.next cursor', async () => {
+    reqSpy.mockResolvedValueOnce(page(['1', '2'], 'https://evil.example.com/v1/things?cursor=X') as never);
+
+    const result = await paginate<AscResource>('/v1/things', undefined, { limit: 100 });
+
+    expect(result.items.map((r) => r.id)).toEqual(['1', '2']);
+    expect(result.pagination).toEqual({ fetched: 2, pages: 1, has_more: true });
+    expect(reqSpy).toHaveBeenCalledTimes(1);
+  });
+
   it('respects a page limit smaller than the API page size by trimming the final page', async () => {
     reqSpy.mockResolvedValueOnce(page(['1', '2', '3', '4', '5']) as never);
     const result = await paginate<AscResource>('/v1/things', undefined, { limit: 3 });
@@ -120,10 +130,10 @@ describe('nextUrlToPath', () => {
 
 describe('pageSize / paginateOpts', () => {
   it('clamps the per-request page size to the API max (200)', () => {
-    expect(pageSize(1000, 50, false)).toBe(200);
-    expect(pageSize(1000, 50, true)).toBe(200);
-    expect(pageSize(10, 50, false)).toBe(10);
-    expect(pageSize(undefined, 50, false)).toBe(50);
+    expect(pageSize(1000, 50)).toBe(200);
+    expect(pageSize(10, 50)).toBe(10);
+    expect(pageSize(undefined, 50)).toBe(50);
+    expect(pageSize(0, 50)).toBe(1);
   });
 
   it('caps to a single page when auto_paginate is off', () => {

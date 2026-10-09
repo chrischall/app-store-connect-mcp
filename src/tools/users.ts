@@ -42,7 +42,7 @@ const ROLE_VALUES = [
 
 export async function listUsers(args: { limit?: number; username?: string; roles?: string[]; auto_paginate?: boolean } = {}): Promise<ToolResult> {
   const { items, pagination } = await paginate<AscResource<UserAttrs>>('/v1/users', {
-    limit: pageSize(args.limit, 100, args.auto_paginate),
+    limit: pageSize(args.limit, 100),
     'filter[username]': args.username,
     'filter[roles]': args.roles,
   }, paginateOpts(args, 100));
@@ -61,7 +61,7 @@ export async function listUserInvitations(args: { limit?: number; email?: string
   const { items, pagination } = await paginate<AscResource<UserInvitationAttrs>>(
     '/v1/userInvitations',
     {
-      limit: pageSize(args.limit, 100, args.auto_paginate),
+      limit: pageSize(args.limit, 100),
       'filter[email]': args.email,
     },
     paginateOpts(args, 100)
@@ -88,6 +88,18 @@ export async function inviteUser(args: {
   visibleAppIds?: string[];
   confirmToken?: string;
 }, ctx: ServerContext): Promise<ToolResult | InputRequiredResult> {
+  // App visibility must be an explicit choice: no silent all-apps default
+  // (least privilege), no empty list that would invite a user who sees nothing,
+  // and no contradictory all-apps-plus-list payload (which ASC rejects).
+  if (args.visibleAppIds !== undefined && args.visibleAppIds.length === 0) {
+    throw new Error('visibleAppIds is empty: pass at least one app ID, or allAppsVisible: true to grant every app.');
+  }
+  if (args.allAppsVisible === true && args.visibleAppIds !== undefined) {
+    throw new Error('allAppsVisible: true conflicts with visibleAppIds: pass one or the other.');
+  }
+  if (args.allAppsVisible === undefined && args.visibleAppIds === undefined) {
+    throw new Error('Choose app visibility explicitly: pass allAppsVisible: true to grant every app, or visibleAppIds to restrict access to specific apps.');
+  }
   const relationships: Record<string, { data: { id: string; type: string }[] }> = {};
   if (args.visibleAppIds?.length) {
     relationships.visibleApps = { data: args.visibleAppIds.map((id) => ({ id, type: 'apps' })) };
@@ -100,7 +112,7 @@ export async function inviteUser(args: {
         firstName: args.firstName,
         lastName: args.lastName,
         roles: args.roles,
-        allAppsVisible: args.allAppsVisible ?? args.visibleAppIds === undefined,
+        allAppsVisible: args.allAppsVisible ?? false,
         provisioningAllowed: args.provisioningAllowed ?? false,
       },
       ...(Object.keys(relationships).length > 0 ? { relationships } : {}),
@@ -160,9 +172,9 @@ export function registerUserTools(server: McpServer): void {
         firstName: z.string().describe('First name'),
         lastName: z.string().describe('Last name'),
         roles: z.array(z.enum(ROLE_VALUES)).min(1).describe('Roles to assign'),
-        allAppsVisible: z.boolean().optional().describe('Grant access to all apps. Default: true unless visibleAppIds is provided.'),
+        allAppsVisible: z.boolean().optional().describe('Grant access to all apps. Required (true) unless visibleAppIds is provided; cannot be combined with visibleAppIds.'),
         provisioningAllowed: z.boolean().optional().describe('Allow access to provisioning (certificates/profiles). Default false.'),
-        visibleAppIds: z.array(z.string()).optional().describe('Restrict visibility to these app IDs. If provided, allAppsVisible defaults to false.'),
+        visibleAppIds: z.array(z.string()).min(1).optional().describe('Restrict visibility to these app IDs (at least one). Required unless allAppsVisible is set.'),
         confirmToken: confirmTokenParam,
       }),
       annotations: { destructiveHint: true },

@@ -43,7 +43,7 @@ describe('users tools', () => {
     });
   });
 
-  it('inviteUser: defaults allAppsVisible=true when no visibleAppIds', async () => {
+  it('inviteUser: sends allAppsVisible=true when explicitly requested', async () => {
     reqSpy.mockResolvedValueOnce({
       data: {
         type: 'userInvitations',
@@ -53,7 +53,7 @@ describe('users tools', () => {
     } as never);
     const harness = await writeHarness();
     try {
-      await confirmedCall(harness, 'invite_user', { email: 'a@b.com', firstName: 'A', lastName: 'B', roles: ['DEVELOPER'] });
+      await confirmedCall(harness, 'invite_user', { email: 'a@b.com', firstName: 'A', lastName: 'B', roles: ['DEVELOPER'], allAppsVisible: true });
     } finally {
       await harness.close();
     }
@@ -112,10 +112,28 @@ describe('users tools', () => {
     });
   });
 
+  it.each([
+    ['neither allAppsVisible nor visibleAppIds (no silent all-apps default)', {}, /allAppsVisible.*visibleAppIds/],
+    ['an empty visibleAppIds', { visibleAppIds: [] }, /visibleAppIds/],
+    ['allAppsVisible:true together with visibleAppIds', { allAppsVisible: true, visibleAppIds: ['app1'] }, /allAppsVisible.*visibleAppIds/],
+  ])('inviteUser: rejects %s before any preview or request', async (_label, extra, message) => {
+    const harness = await writeHarness();
+    try {
+      const result = await harness.callTool('invite_user', { email: 'a@b.com', firstName: 'A', lastName: 'B', roles: ['DEVELOPER'], ...extra });
+      expect(result.isError).toBe(true);
+      const text = (result.content as Array<{ type: string; text: string }>).map((c) => c.text).join('\n');
+      expect(text).toMatch(message);
+      expect(text).not.toMatch(/confirmToken/);
+    } finally {
+      await harness.close();
+    }
+    expect(reqSpy).not.toHaveBeenCalled();
+  });
+
   it('inviteUser: phase 1 returns the preview and makes NO network call', async () => {
     const harness = await writeHarness();
     try {
-      const body = await phaseOne(harness, 'invite_user', { email: 'a@b.com', firstName: 'A', lastName: 'B', roles: ['ADMIN'] });
+      const body = await phaseOne(harness, 'invite_user', { email: 'a@b.com', firstName: 'A', lastName: 'B', roles: ['ADMIN'], allAppsVisible: true });
       expect(reqSpy).not.toHaveBeenCalled();
       expect(body.preview.method).toBe('POST');
       expect(body.preview.path).toBe('/v1/userInvitations');

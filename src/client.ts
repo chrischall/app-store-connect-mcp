@@ -5,7 +5,6 @@ import {
   createApiClient,
   createCachedTokenSource,
   signEs256Jwt,
-  formatApiError,
   loadDotenvSafely,
   readEnvVar,
   expandPath,
@@ -184,36 +183,19 @@ export class AppStoreConnectClient {
   async request<T>(method: HttpMethod, path: string, body?: unknown, query?: Record<string, string | number | string[] | undefined>): Promise<T> {
     // buildUrl keeps Apple's comma-joined array convention (the shared
     // buildQueryString expands arrays as repeated keys, which ASC rejects).
-    const pathWithQuery = buildUrl(path, query).slice(API_BASE.length);
-    return this.api.fetchJson<T>(method, pathWithQuery, body !== undefined ? { body } : {});
+    return this.api.fetchJson<T>(method, apiPath(path, query), body !== undefined ? { body } : {});
   }
 
   /**
    * Make an authenticated request and return the raw response body as a Buffer.
-   * Used for sales/finance report downloads which return gzipped TSVs — a thin
-   * local raw-fetch path (the shared client has no fetchRaw), sharing the same
-   * withAuth re-mint/replay, one-shot 429 retry, and timeout.
+   * Used for sales/finance report downloads, which return gzipped TSVs. Goes
+   * through the shared client's `fetchRaw`, so reports get the same withAuth
+   * re-mint/replay, 429 handling (incl. Retry-After), 401 mapping, redacted
+   * errors and timeout as JSON tools.
    */
   async requestRaw(method: HttpMethod, path: string, query?: Record<string, string | number | string[] | undefined>): Promise<{ buffer: Buffer; contentType: string | null }> {
-    const url = buildUrl(path, query);
-    const doFetch = (token: string): Promise<Response> =>
-      fetch(url, {
-        method,
-        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-      });
-
-    let response = await this.withAuth(doFetch);
-    if (response.status === 429) {
-      await new Promise<void>((r) => setTimeout(r, 2000));
-      response = await this.withAuth(doFetch);
-    }
-    if (!response.ok) {
-      const text = await response.text().catch(() => '');
-      throw new Error(formatApiError(response.status, method, path, text, { service: SERVICE_NAME }));
-    }
-    const arrayBuffer = await response.arrayBuffer();
-    return { buffer: Buffer.from(arrayBuffer), contentType: response.headers.get('content-type') };
+    const res = await this.api.fetchRaw(method, apiPath(path, query), { headers: { Accept: 'application/a-gzip' } });
+    return { buffer: Buffer.from(res.bytes), contentType: res.contentType };
   }
 }
 
@@ -238,6 +220,19 @@ export function buildUrl(path: string, query?: Record<string, string | number | 
   return url.toString();
 }
 
+/**
+ * {@link buildUrl}, reduced to the path+query relative to {@link API_BASE} that
+ * the shared client takes. Extracted from the parsed URL (not a fixed-offset
+ * slice), and an absolute URL on another origin is refused rather than mangled.
+ */
+function apiPath(path: string, query?: Record<string, string | number | string[] | undefined>): string {
+  const url = new URL(buildUrl(path, query));
+  if (url.origin !== new URL(API_BASE).origin) {
+    throw new Error(`Refusing off-host request: ${JSON.stringify(path)} is not on the App Store Connect API (${API_BASE})`);
+  }
+  return `${url.pathname}${url.search}`;
+}
+
 export const client = new AppStoreConnectClient();
 
 // App Store Connect's largest accepted `limit` query value for most list
@@ -245,17 +240,13 @@ export const client = new AppStoreConnectClient();
 const API_MAX_PAGE_SIZE = 200;
 
 /**
- * Compute the `limit` query value to send to the API for a single request.
- *
- * - Without auto-pagination: the user's `limit` (or the tool default), clamped to
- *   the API page-size ceiling — i.e. exactly the legacy single-page behavior.
- * - With auto-pagination: request the largest page the API allows (so the walk
- *   uses the fewest round-trips), but never more than the total the caller wants.
+ * Compute the `limit` query value to send to the API for a single request: the
+ * caller's `limit` (or the tool default), clamped to [1, API page-size ceiling].
+ * The same value is used with or without auto-pagination; with it, `limit` is
+ * also the total ceiling {@link paginate} enforces across pages.
  */
-export function pageSize(limit: number | undefined, defaultLimit: number, autoPaginate?: boolean): number {
-  const total = limit ?? defaultLimit;
-  if (autoPaginate) return Math.min(API_MAX_PAGE_SIZE, Math.max(1, total));
-  return Math.min(API_MAX_PAGE_SIZE, Math.max(1, total));
+export function pageSize(limit: number | undefined, defaultLimit: number): number {
+  return Math.min(API_MAX_PAGE_SIZE, Math.max(1, limit ?? defaultLimit));
 }
 
 /**
@@ -302,8 +293,8 @@ export interface PaginatedResult<T> {
 /**
  * Reduce an absolute App Store Connect `links.next` URL to a path+query relative
  * to {@link API_BASE} so it can be fed back into {@link AppStoreConnectClient.request}
- * (which takes a path). Returns `undefined` if the URL points off-host (defensive;
- * ASC always returns same-host cursors).
+ * (which takes a path). Returns `undefined` if the URL points off-host; {@link paginate}
+ * then stops with `has_more: true` instead of following it.
  */
 export function nextUrlToPath(nextUrl: string): string | undefined {
   let parsed: URL;
@@ -340,9 +331,19 @@ export async function paginate<T = AscResource>(
   let hasMore = false;
 
   while (pages < maxPages) {
-    const response: AscEnvelope<T[]> = nextUrl
-      ? await client.request<AscEnvelope<T[]>>('GET', nextUrlToPath(nextUrl) ?? nextUrl)
-      : await client.request<AscEnvelope<T[]>>('GET', path, undefined, query);
+    let response: AscEnvelope<T[]>;
+    if (nextUrl) {
+      const nextPath = nextUrlToPath(nextUrl);
+      if (nextPath === undefined) {
+        // Off-host (or unparseable) cursor: never follow it. Stop and report
+        // that the API advertised more than we returned.
+        hasMore = true;
+        break;
+      }
+      response = await client.request<AscEnvelope<T[]>>('GET', nextPath);
+    } else {
+      response = await client.request<AscEnvelope<T[]>>('GET', path, undefined, query);
+    }
     pages += 1;
 
     const pageItems = response.data ?? [];

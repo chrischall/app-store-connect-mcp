@@ -41,7 +41,7 @@ export async function listApps(args: { limit?: number; bundleId?: string; name?:
   const { items, pagination } = await paginate<AscResource<AppAttrs>>(
     '/v1/apps',
     {
-      limit: pageSize(args.limit, 50, args.auto_paginate),
+      limit: pageSize(args.limit, 50),
       'filter[bundleId]': args.bundleId,
       'filter[name]': args.name,
     },
@@ -60,7 +60,7 @@ export async function listAppStoreVersions(args: { appId: string; limit?: number
   const { items, pagination } = await paginate<AscResource<AppVersionAttrs>>(
     `/v1/apps/${idSegment(args.appId)}/appStoreVersions`,
     {
-      limit: pageSize(args.limit, 25, args.auto_paginate),
+      limit: pageSize(args.limit, 25),
       'filter[platform]': args.platform,
       'filter[appStoreState]': args.appStoreState,
     },

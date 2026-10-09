@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { generateKeyPairSync, createPublicKey, createVerify } from 'crypto';
-import { AppStoreConnectClient, mintJwt, buildUrl } from '../src/client.js';
+import { AppStoreConnectClient, mintJwt, buildUrl, API_BASE } from '../src/client.js';
 
 function generateP256Pem(): { privatePem: string; publicPem: string } {
   const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
@@ -259,6 +259,16 @@ describe('AppStoreConnectClient.request', () => {
     await expect(c.request('GET', '/v1/apps')).rejects.toThrow(/App Store Connect error 403 for GET \/v1\/apps.*Forbidden/);
   });
 
+  it('sends the URL path+query (not a fixed-offset slice) and refuses an off-host absolute URL', async () => {
+    fetchMock.mockResolvedValueOnce(makeResponse({ data: [] }));
+    const c = new AppStoreConnectClient();
+    await c.request('GET', '/v1/apps?cursor=A', undefined, { limit: 5 });
+    expect(String(fetchMock.mock.calls[0]![0])).toBe(`${API_BASE}/v1/apps?cursor=A&limit=5`);
+
+    await expect(c.request('GET', 'https://evil.example.com/v1/apps?cursor=X')).rejects.toThrow(/off-host|App Store Connect API/);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('strips `${...}` placeholder env values', async () => {
     process.env.APP_STORE_CONNECT_KEY_ID = '${APP_STORE_CONNECT_KEY_ID}';
     const c = new AppStoreConnectClient();
@@ -323,6 +333,23 @@ describe('AppStoreConnectClient.requestRaw', () => {
       .mockResolvedValueOnce(makeResponse(Buffer.from([0x1f, 0x8b])));
     const c = new AppStoreConnectClient();
     await c.requestRaw('GET', '/v1/salesReports');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('asks for a gzip report (not JSON) and keeps the comma-joined query', async () => {
+    fetchMock.mockResolvedValueOnce(makeResponse(Buffer.from([0x1f, 0x8b]), 200, 'application/a-gzip'));
+    const c = new AppStoreConnectClient();
+    await c.requestRaw('GET', '/v1/salesReports', { 'filter[vendorNumber]': '8001', 'fields[x]': ['a', 'b'] });
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(String(url)).toBe(`${API_BASE}/v1/salesReports?filter%5BvendorNumber%5D=8001&fields%5Bx%5D=a%2Cb`);
+    const headers = new Headers(init.headers as HeadersInit);
+    expect(headers.get('accept')).toBe('application/a-gzip');
+  });
+
+  it('maps a 401 that persists after the re-mint replay to the shared unauthorized error, like JSON tools', async () => {
+    fetchMock.mockResolvedValue(makeResponse('', 401));
+    const c = new AppStoreConnectClient();
+    await expect(c.requestRaw('GET', '/v1/salesReports')).rejects.toThrow(/[Uu]nauthorized/);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
