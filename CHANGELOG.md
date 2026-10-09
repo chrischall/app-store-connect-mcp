@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.3.1](https://github.com/chrischall/app-store-connect-mcp/compare/v1.3.0...v1.3.1) (2026-10-09)
+
+
+### Bug Fixes
+
+* annotate tools truthfully and sync manifests with the served tools ([#146](https://github.com/chrischall/app-store-connect-mcp/issues/146)) ([224ba58](https://github.com/chrischall/app-store-connect-mcp/commit/224ba58308ffbeb013bbda767f4fd8f4065f28ef))
+* declare the plugin MCP config under the mcpServers key Claude Code reads ([#147](https://github.com/chrischall/app-store-connect-mcp/issues/147)) ([07082c4](https://github.com/chrischall/app-store-connect-mcp/commit/07082c429abc9599027ac10bfe550422fbbc1392))
+* **deps:** update @chrischall/mcp-utils to 3.0.0 ([#145](https://github.com/chrischall/app-store-connect-mcp/issues/145)) ([92833d4](https://github.com/chrischall/app-store-connect-mcp/commit/92833d49c54a2359897e7e0e079f3e8e8734fee6))
+* refuse invite_user without app visibility and keep malformed finance report rows ([#143](https://github.com/chrischall/app-store-connect-mcp/issues/143)) ([4dc8bff](https://github.com/chrischall/app-store-connect-mcp/commit/4dc8bff5beb8f09f1bc74e88b72e0e1cd86c9fff))
+* resolve low-severity audit findings ([#140](https://github.com/chrischall/app-store-connect-mcp/issues/140)) ([8b1d89a](https://github.com/chrischall/app-store-connect-mcp/commit/8b1d89aad3ef1f81756f047323f802a2ffe00010))
+
 ## [1.3.0](https://github.com/chrischall/app-store-connect-mcp/compare/v1.2.3...v1.3.0) (2026-10-07)
 
 
