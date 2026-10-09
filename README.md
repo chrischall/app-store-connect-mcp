@@ -114,10 +114,10 @@ The key signs short-lived (20-minute) ES256 JWTs on demand. No external token st
 | `get_customer_review` | Single review with developer response |
 | `respond_to_review` | Post or update a developer reply |
 | `download_sales_report` | Daily/weekly/monthly/yearly units & sales TSV |
-| `download_finance_report` | Region finance/proceeds TSV |
+| `download_finance_report` | Region finance/proceeds TSV; `Total_*` trailer lines in a separate `summary` |
 | `list_users` | App Store Connect team users |
 | `list_user_invitations` | Pending team invitations |
-| `invite_user` | Invite a new team member with roles |
+| `invite_user` | Invite a new team member with roles; app visibility is explicit (`allAppsVisible: true` or a non-empty `visibleAppIds`, no all-apps default) |
 | `asc_healthcheck` | Verify credentials and upstream reachability; reports failures as data, not exceptions |
 
 ## Environment

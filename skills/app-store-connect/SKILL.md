@@ -32,10 +32,10 @@ MCP server for App Store Connect — apps, TestFlight, customer reviews, sales/f
 
 ### Sales & Finance
 - `download_sales_report` — Daily/weekly/monthly/yearly TSV
-- `download_finance_report` — Region-scoped proceeds TSV
+- `download_finance_report` — Region-scoped proceeds TSV (`Total_*` lines in `summary`, not `rows`)
 
 ### Team Users
-- `list_users`, `list_user_invitations`, `invite_user`
+- `list_users`, `list_user_invitations`, `invite_user` (app visibility is explicit: `allAppsVisible: true` or a non-empty `visibleAppIds`)
 
 ### Health
 - `asc_healthcheck` — Is this connector working? Reports which of the three key settings resolved, whether App Store Connect accepted the signed JWT, and what to fix. Start here when another tool fails: a 401 here means a revoked key, a key/issuer team mismatch, or local clock drift — never a wrong password.
