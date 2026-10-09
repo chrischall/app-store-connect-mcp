@@ -48,7 +48,7 @@ Generate a key at [appstoreconnect.apple.com → Users and Access → Integratio
 ### Team Users
 - `list_users` — Team users
 - `list_user_invitations` — Pending invitations
-- `invite_user` — Invite new team member with roles
+- `invite_user` — Invite new team member with roles; app visibility is explicit: `allAppsVisible: true` or a non-empty `visibleAppIds`
 
 ### Health
 - `asc_healthcheck` — Is this connector working? Reports which of the three key settings resolved, whether App Store Connect accepted the signed JWT, and what to fix. Start here when another tool fails: a 401 here means a revoked key, a key/issuer team mismatch, or local clock drift — never a wrong password.

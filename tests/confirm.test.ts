@@ -76,8 +76,8 @@ describe('confirmation gate', () => {
 
   it('a token issued for one target does not act on another', async () => {
     harness = await writeHarness();
-    const { confirmToken } = await phaseOne(harness, 'invite_user', { email: 'a@b.com', firstName: 'A', lastName: 'B', roles: ['DEVELOPER'] });
-    const other = await harness.callTool('invite_user', { email: 'x@y.com', firstName: 'A', lastName: 'B', roles: ['DEVELOPER'], confirmToken });
+    const { confirmToken } = await phaseOne(harness, 'invite_user', { email: 'a@b.com', firstName: 'A', lastName: 'B', roles: ['DEVELOPER'], allAppsVisible: true });
+    const other = await harness.callTool('invite_user', { email: 'x@y.com', firstName: 'A', lastName: 'B', roles: ['DEVELOPER'], allAppsVisible: true, confirmToken });
     expect(other.isError).toBe(true);
     expect(parseToolResult<Rejection>(other).status).toBe('confirmation-rejected');
     expect(reqSpy).not.toHaveBeenCalled();
