@@ -138,7 +138,7 @@ export function registerSalesTools(server: McpServer): void {
     'download_finance_report',
     {
       description:
-        'Download a financial report (proceeds and adjustments) for a region. Returns parsed TSV rows.',
+        'Download a financial report (proceeds and adjustments) for a region. Returns parsed TSV rows; the Total_* trailer lines (Total_Rows, Total_Amount, Total_Units) come back in a separate summary object, not in rows.',
       inputSchema: z.object({
         vendorNumber: z.string().describe('Apple-issued vendor number'),
         reportDate: z.string().describe('Fiscal report month, format YYYY-MM (e.g. "2025-09")'),

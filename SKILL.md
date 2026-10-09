@@ -43,12 +43,12 @@ Generate a key at [appstoreconnect.apple.com → Users and Access → Integratio
 
 ### Sales & Finance
 - `download_sales_report` — Daily/weekly/monthly/yearly units & sales TSV
-- `download_finance_report` — Region-scoped finance/proceeds TSV
+- `download_finance_report` — Region-scoped finance/proceeds TSV; `Total_*` trailer lines come back in a separate `summary` object, not in `rows`
 
 ### Team Users
 - `list_users` — Team users
 - `list_user_invitations` — Pending invitations
-- `invite_user` — Invite new team member with roles; app visibility is explicit: `allAppsVisible: true` or a non-empty `visibleAppIds`
+- `invite_user` — Invite new team member with roles; app visibility is explicit: `allAppsVisible: true` or a non-empty `visibleAppIds` (there is no all-apps default, and `allAppsVisible: false` alone is refused)
 
 ### Health
 - `asc_healthcheck` — Is this connector working? Reports which of the three key settings resolved, whether App Store Connect accepted the signed JWT, and what to fix. Start here when another tool fails: a 401 here means a revoked key, a key/issuer team mismatch, or local clock drift — never a wrong password.

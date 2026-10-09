@@ -168,7 +168,7 @@ export function registerUserTools(server: McpServer): void {
   server.registerTool(
     'invite_user',
     {
-      description: 'Invite a new user to your App Store Connect team with specified roles (sends a real email; roles can include ADMIN). ' + CONFIRM_FLOW,
+      description: 'Invite a new user to your App Store Connect team with specified roles (sends a real email; roles can include ADMIN). App visibility has no default: pass allAppsVisible: true, or a non-empty visibleAppIds. ' + CONFIRM_FLOW,
       inputSchema: z.object({
         email: z.string().email().describe("User's email"),
         firstName: z.string().describe('First name'),
