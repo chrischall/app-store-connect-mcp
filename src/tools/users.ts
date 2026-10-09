@@ -42,7 +42,7 @@ const ROLE_VALUES = [
 
 export async function listUsers(args: { limit?: number; username?: string; roles?: string[]; auto_paginate?: boolean } = {}): Promise<ToolResult> {
   const { items, pagination } = await paginate<AscResource<UserAttrs>>('/v1/users', {
-    limit: pageSize(args.limit, 100, args.auto_paginate),
+    limit: pageSize(args.limit, 100),
     'filter[username]': args.username,
     'filter[roles]': args.roles,
   }, paginateOpts(args, 100));
@@ -61,7 +61,7 @@ export async function listUserInvitations(args: { limit?: number; email?: string
   const { items, pagination } = await paginate<AscResource<UserInvitationAttrs>>(
     '/v1/userInvitations',
     {
-      limit: pageSize(args.limit, 100, args.auto_paginate),
+      limit: pageSize(args.limit, 100),
       'filter[email]': args.email,
     },
     paginateOpts(args, 100)

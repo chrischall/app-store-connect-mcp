@@ -257,17 +257,13 @@ export const client = new AppStoreConnectClient();
 const API_MAX_PAGE_SIZE = 200;
 
 /**
- * Compute the `limit` query value to send to the API for a single request.
- *
- * - Without auto-pagination: the user's `limit` (or the tool default), clamped to
- *   the API page-size ceiling — i.e. exactly the legacy single-page behavior.
- * - With auto-pagination: request the largest page the API allows (so the walk
- *   uses the fewest round-trips), but never more than the total the caller wants.
+ * Compute the `limit` query value to send to the API for a single request: the
+ * caller's `limit` (or the tool default), clamped to [1, API page-size ceiling].
+ * The same value is used with or without auto-pagination; with it, `limit` is
+ * also the total ceiling {@link paginate} enforces across pages.
  */
-export function pageSize(limit: number | undefined, defaultLimit: number, autoPaginate?: boolean): number {
-  const total = limit ?? defaultLimit;
-  if (autoPaginate) return Math.min(API_MAX_PAGE_SIZE, Math.max(1, total));
-  return Math.min(API_MAX_PAGE_SIZE, Math.max(1, total));
+export function pageSize(limit: number | undefined, defaultLimit: number): number {
+  return Math.min(API_MAX_PAGE_SIZE, Math.max(1, limit ?? defaultLimit));
 }
 
 /**

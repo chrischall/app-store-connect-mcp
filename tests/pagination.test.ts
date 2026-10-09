@@ -130,10 +130,10 @@ describe('nextUrlToPath', () => {
 
 describe('pageSize / paginateOpts', () => {
   it('clamps the per-request page size to the API max (200)', () => {
-    expect(pageSize(1000, 50, false)).toBe(200);
-    expect(pageSize(1000, 50, true)).toBe(200);
-    expect(pageSize(10, 50, false)).toBe(10);
-    expect(pageSize(undefined, 50, false)).toBe(50);
+    expect(pageSize(1000, 50)).toBe(200);
+    expect(pageSize(10, 50)).toBe(10);
+    expect(pageSize(undefined, 50)).toBe(50);
+    expect(pageSize(0, 50)).toBe(1);
   });
 
   it('caps to a single page when auto_paginate is off', () => {
