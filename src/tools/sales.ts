@@ -16,8 +16,11 @@ interface ParsedReport {
  * App Store Connect sales/finance reports always come back gzipped. Finance
  * reports end with `Total_*` trailer lines (and detail reports can repeat the
  * header per section); those are not data rows, so a line whose first cell is
- * `Total_*` or whose cell count differs from the header goes to `summary`, and
- * a repeated header line is skipped.
+ * `Total_*` goes to `summary` and a repeated header line is skipped. A label
+ * seen again gets a ` (2)`, ` (3)`... suffix rather than overwriting the
+ * earlier value. Every other line is a data row whatever its cell count:
+ * missing cells become '' and cells beyond the header are kept, tab-joined,
+ * under `_extra`, so nothing is dropped.
  */
 function parseGzippedTsv(buffer: Buffer): ParsedReport {
   const text = gunzipSync(buffer).toString('utf8');
@@ -30,14 +33,17 @@ function parseGzippedTsv(buffer: Buffer): ParsedReport {
   for (const line of lines.slice(1)) {
     if (line === headerLine) continue;
     const cells = line.split('\t');
-    if (cells.length !== headers.length || /^Total_/.test(cells[0] ?? '')) {
-      summary[cells[0]!] = cells.slice(1).join('\t');
+    if (/^Total_/.test(cells[0]!)) {
+      let key = cells[0]!;
+      for (let n = 2; key in summary; n++) key = `${cells[0]} (${n})`;
+      summary[key] = cells.slice(1).join('\t');
       continue;
     }
     const row: Record<string, string> = {};
     headers.forEach((h, i) => {
       row[h] = cells[i] ?? '';
     });
+    if (cells.length > headers.length) row._extra = cells.slice(headers.length).join('\t');
     rows.push(row);
   }
   return { rows, summary };

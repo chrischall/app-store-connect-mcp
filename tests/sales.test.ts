@@ -97,6 +97,38 @@ describe('sales tools', () => {
     expect(parsed.summary).toEqual({ Total_Rows: '2', Total_Amount: '2.80', Total_Units: '4' });
   });
 
+  it('downloadSalesReport: keeps a data row with a different cell count as a row, not summary', async () => {
+    const tsv = [
+      'Provider\tTitle\tUnits',
+      'APPLE\tShort', // trailing empty cell trimmed by the producer
+      'APPLE\tMy App\t7',
+      'APPLE\tLong\t3\textra1\textra2',
+    ].join('\n');
+    rawSpy.mockResolvedValueOnce({ buffer: gzipSync(Buffer.from(tsv, 'utf8')), contentType: 'application/a-gzip' });
+    const result = await downloadSalesReport({ vendorNumber: '8001', reportDate: '2025-09-15' });
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.totalRows).toBe(3);
+    expect(parsed.rows[0]).toEqual({ Provider: 'APPLE', Title: 'Short', Units: '' });
+    expect(parsed.rows[2]).toEqual({ Provider: 'APPLE', Title: 'Long', Units: '3', _extra: 'extra1\textra2' });
+    expect(parsed).not.toHaveProperty('summary');
+  });
+
+  it('downloadFinanceReport: a repeated Total_* label does not overwrite the earlier one', async () => {
+    const tsv = [
+      'Region\tAmount',
+      'US\t1.00',
+      'Total_Amount\t1.00',
+      'Region\tAmount',
+      'EU\t2.00',
+      'Total_Amount\t2.00',
+    ].join('\n');
+    rawSpy.mockResolvedValueOnce({ buffer: gzipSync(Buffer.from(tsv, 'utf8')), contentType: 'application/a-gzip' });
+    const result = await downloadFinanceReport({ vendorNumber: '8001', reportDate: '2025-09', regionCode: 'Z1' });
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.totalRows).toBe(2);
+    expect(parsed.summary).toEqual({ Total_Amount: '1.00', 'Total_Amount (2)': '2.00' });
+  });
+
   it('downloadSalesReport: omits summary when the report has none', async () => {
     rawSpy.mockResolvedValueOnce({ buffer: makeGzippedTsv([['A', 'B'], ['1', '2']]), contentType: 'application/a-gzip' });
     const result = await downloadSalesReport({ vendorNumber: '8001', reportDate: '2025-09-15' });
