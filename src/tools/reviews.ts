@@ -75,6 +75,7 @@ export async function respondToReview(args: { reviewId: string; responseBody: st
   };
   const gate = await confirmWrite(ctx, args.confirmToken, {
     tool: 'respond_to_review',
+    args,
     action: 'review.respond',
     message: 'Review and confirm this PUBLIC response to a customer review:',
     target: args.reviewId,

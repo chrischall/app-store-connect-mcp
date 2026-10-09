@@ -122,6 +122,7 @@ export async function inviteUser(args: {
   };
   const gate = await confirmWrite(ctx, args.confirmToken, {
     tool: 'invite_user',
+    args,
     action: 'user.invite',
     message: 'Review and confirm this team invitation (sends a real email):',
     target: args.email,
