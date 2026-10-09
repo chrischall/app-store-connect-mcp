@@ -94,7 +94,7 @@ export function registerAppTools(server: McpServer): void {
         bundleId: z.string().optional().describe('Exact bundle ID filter (e.g. com.example.MyApp)'),
         name: z.string().optional().describe('Exact app name filter'),
       }),
-      annotations: { readOnlyHint: true },
+      annotations: { readOnlyHint: true, openWorldHint: true },
     },
     listApps
   );
@@ -106,7 +106,7 @@ export function registerAppTools(server: McpServer): void {
       inputSchema: z.object({
         appId: ascId.describe('App Store Connect app ID (numeric, from list_apps)'),
       }),
-      annotations: { readOnlyHint: true },
+      annotations: { readOnlyHint: true, openWorldHint: true },
     },
     getApp
   );
@@ -122,7 +122,7 @@ export function registerAppTools(server: McpServer): void {
         platform: z.enum(['IOS', 'MAC_OS', 'TV_OS', 'VISION_OS']).optional().describe('Filter by platform'),
         appStoreState: z.string().optional().describe('Filter by state, e.g. READY_FOR_SALE, IN_REVIEW, REJECTED'),
       }),
-      annotations: { readOnlyHint: true },
+      annotations: { readOnlyHint: true, openWorldHint: true },
     },
     listAppStoreVersions
   );
@@ -134,7 +134,7 @@ export function registerAppTools(server: McpServer): void {
       inputSchema: z.object({
         appId: ascId.describe('App Store Connect app ID'),
       }),
-      annotations: { readOnlyHint: true },
+      annotations: { readOnlyHint: true, openWorldHint: true },
     },
     getAppInfos
   );
