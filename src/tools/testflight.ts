@@ -114,6 +114,7 @@ export async function inviteBetaTester(args: { email: string; firstName?: string
   };
   const gate = await confirmWrite(ctx, args.confirmToken, {
     tool: 'invite_beta_tester',
+    args,
     action: 'betaTester.invite',
     message: 'Review and confirm this beta tester invitation (sends a real email):',
     target: args.email,
@@ -133,6 +134,7 @@ export async function deleteBetaTester(args: { betaTesterId: string; confirmToke
   const path = `/v1/betaTesters/${idSegment(args.betaTesterId)}`;
   const gate = await confirmWrite(ctx, args.confirmToken, {
     tool: 'delete_beta_tester',
+    args,
     action: 'betaTester.delete',
     message: 'Review and confirm this deletion:',
     target: args.betaTesterId,
@@ -152,6 +154,7 @@ export async function addTestersToBetaGroup(args: { betaGroupId: string; betaTes
   const path = `/v1/betaGroups/${idSegment(args.betaGroupId)}/relationships/betaTesters`;
   const gate = await confirmWrite(ctx, args.confirmToken, {
     tool: 'add_testers_to_beta_group',
+    args,
     action: 'betaGroup.addTesters',
     message: 'Review and confirm adding these testers to the beta group:',
     target: args.betaGroupId,
@@ -172,6 +175,7 @@ export async function removeTestersFromBetaGroup(args: { betaGroupId: string; be
   const path = `/v1/betaGroups/${idSegment(args.betaGroupId)}/relationships/betaTesters`;
   const gate = await confirmWrite(ctx, args.confirmToken, {
     tool: 'remove_testers_from_beta_group',
+    args,
     action: 'betaGroup.removeTesters',
     message: 'Review and confirm removing these testers from the beta group:',
     target: args.betaGroupId,
@@ -196,6 +200,7 @@ export async function submitBuildForBetaReview(args: { buildId: string; confirmT
   };
   const gate = await confirmWrite(ctx, args.confirmToken, {
     tool: 'submit_build_for_beta_review',
+    args,
     action: 'build.submitForBetaReview',
     message: 'Review and confirm this submission to Apple:',
     target: args.buildId,

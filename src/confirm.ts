@@ -25,6 +25,12 @@ export interface PlannedWrite {
   body?: unknown;
   /** Extra caveat for the user (e.g. public visibility). */
   note?: string;
+  /**
+   * The tool's validated arguments (a `confirmToken` key is dropped by
+   * mcp-utils). Bound into both the token and the elicitation acceptance, so
+   * an approval for one set of arguments cannot authorise another.
+   */
+  args: object;
 }
 
 /**
@@ -52,6 +58,10 @@ export function confirmWrite(
       message: write.message,
       details: preview,
       tool: write.tool,
+      // Single-account server: one ASC API key (issuer + key id) per process,
+      // so there is no per-call principal to bind.
+      account: undefined,
+      args: write.args,
       confirmToken,
       subject: () => ({
         target: write.target,
