@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const read = (p: string) =>
@@ -25,5 +25,17 @@ describe('server.json is publishable to the MCP registry', () => {
 
   it('keeps the bin unscoped so the command name is unchanged', () => {
     expect(Object.keys(read('package.json').bin)).toEqual(['app-store-connect-mcp']);
+  });
+});
+
+describe('.claude-plugin/plugin.json declares its MCP config where Claude Code reads it', () => {
+  it('uses mcpServers, not the ignored mcp key, and points at a real file', () => {
+    // Claude Code ignores an `mcp` key ("Unknown field 'mcp'"); it only worked
+    // here because ./.mcp.json is the default. Copies with a non-default path
+    // (office-outlook-mcp, microsoft-teams-mcp) shipped broken plugin installs.
+    const plugin = read('.claude-plugin/plugin.json');
+    expect(plugin).not.toHaveProperty('mcp');
+    expect(plugin.mcpServers).toBe('./.mcp.json');
+    expect(existsSync(fileURLToPath(new URL(`../${plugin.mcpServers}`, import.meta.url)))).toBe(true);
   });
 });
