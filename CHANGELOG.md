@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.3.2](https://github.com/chrischall/app-store-connect-mcp/compare/v1.3.1...v1.3.2) (2026-10-16)
+
+
+### Bug Fixes
+
+* **deps:** Bump the production-dependencies group with 4 updates ([#148](https://github.com/chrischall/app-store-connect-mcp/issues/148)) ([741aae6](https://github.com/chrischall/app-store-connect-mcp/commit/741aae60e8e0c081c8ccdfab9d623bf8418641ca))
+* **plugin:** launch the published package so marketplace installs start ([#153](https://github.com/chrischall/app-store-connect-mcp/issues/153)) ([4d3e757](https://github.com/chrischall/app-store-connect-mcp/commit/4d3e7574288155ad697038f6d4fff94f6d3cdf71))
+* **reports:** refuse oversized sales and finance reports instead of exhausting memory ([#151](https://github.com/chrischall/app-store-connect-mcp/issues/151)) ([4ad6ccc](https://github.com/chrischall/app-store-connect-mcp/commit/4ad6cccf46002d9732efb5b440b3c07488a459bd))
+
 ## [1.3.1](https://github.com/chrischall/app-store-connect-mcp/compare/v1.3.0...v1.3.1) (2026-10-09)
 
 
