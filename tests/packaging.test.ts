@@ -39,3 +39,17 @@ describe('.claude-plugin/plugin.json declares its MCP config where Claude Code r
     expect(existsSync(fileURLToPath(new URL(`../${plugin.mcpServers}`, import.meta.url)))).toBe(true);
   });
 });
+
+describe('.mcp.json launches the published package', () => {
+  it('runs npx -y <package>, never a dist/ path a git-source plugin install does not have', () => {
+    // A marketplace (git-source) plugin install does not build the repo, and
+    // dist/ is gitignored, so `node ${CLAUDE_PLUGIN_ROOT}/dist/...` failed to
+    // start (fleet-audit#1195).
+    const pkg = read('package.json') as { name: string };
+    const server = (read('.mcp.json') as { mcpServers: Record<string, { command: string; args: string[] }> })
+      .mcpServers['app-store-connect'];
+    expect(server?.command).toBe('npx');
+    expect(server?.args).toEqual(['-y', pkg.name]);
+    expect(JSON.stringify(server)).not.toMatch(/dist\//);
+  });
+});
