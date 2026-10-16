@@ -1,0 +1,17 @@
+{
+  // Typechecks the tests as well as the source.
+  //
+  // tsconfig.json drives the build (rootDir "src"), so it leaves tests/ out,
+  // and vitest transpiles with esbuild without typechecking. Without this
+  // config a type error in a test (a stale import, a fake missing a required
+  // field) passes every suite and CI.
+  //
+  // Kept separate from tsconfig.json because widening `include` there would
+  // drag tests into outDir and break the emitted build.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "."
+  },
+  "include": ["src", "tests"]
+}

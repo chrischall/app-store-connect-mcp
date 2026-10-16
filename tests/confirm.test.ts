@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from 'vitest';
 import { parseToolResult, type TestHarness } from '@chrischall/mcp-utils/test';
+import { CONFIRM_FLOW_SENTENCE, CONFIRM_INJECTION_RULE } from '@chrischall/mcp-utils';
 import { client } from '../src/client.js';
 import { writeHarness, phaseOne } from './helpers.js';
 
@@ -21,7 +22,7 @@ interface Rejection {
 }
 
 describe('confirmation gate', () => {
-  let reqSpy: ReturnType<typeof vi.spyOn<typeof client, 'request'>>;
+  let reqSpy: MockInstance<typeof client.request>;
   let savedEnv: NodeJS.ProcessEnv;
   let harness: TestHarness | undefined;
 
@@ -48,6 +49,33 @@ describe('confirmation gate', () => {
       expect(tool?.description, name).toMatch(/confirmToken/);
       expect(tool?.description, name).not.toMatch(/confirm:\s*true/);
     }
+  });
+
+  it('every gated tool describes the flow and the injection rule with the fleet constants', async () => {
+    // fleet-audit#1215: the gate is mcp-utils confirmWrite, so the wording is
+    // the shared one rather than a local copy that drifts.
+    harness = await writeHarness();
+    const { tools } = await harness.client.listTools();
+    for (const name of GATED_TOOLS) {
+      const tool = tools.find((t) => t.name === name);
+      expect(tool?.description, name).toContain(CONFIRM_FLOW_SENTENCE);
+      expect(tool?.description, name).toContain(CONFIRM_INJECTION_RULE);
+    }
+  });
+
+  it('the phase-1 preview shows the exact request and the public-visibility note', async () => {
+    harness = await writeHarness();
+    const { preview } = (await phaseOne(harness, 'respond_to_review', { reviewId: 'r9', responseBody: 'Thanks!' })) as unknown as {
+      preview: Record<string, unknown>;
+    };
+    expect(preview).toMatchObject({
+      action: 'Post a PUBLIC developer response to a customer review',
+      method: 'POST',
+      path: '/v1/customerReviewResponses',
+      note: 'This response is publicly visible on the App Store.',
+    });
+    expect(preview.willSend).toMatchObject({ data: { attributes: { responseBody: 'Thanks!' } } });
+    expect(reqSpy).not.toHaveBeenCalled();
   });
 
   it('replaying a used token is refused as TOKEN_REUSED and writes nothing more', async () => {

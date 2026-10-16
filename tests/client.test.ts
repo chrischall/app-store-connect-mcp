@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { generateKeyPairSync, createPublicKey, createVerify } from 'crypto';
-import { AppStoreConnectClient, mintJwt, buildUrl, API_BASE } from '../src/client.js';
+import { AppStoreConnectClient, mintJwt, buildUrl, API_BASE, API_MAX_RESPONSE_BYTES, REPORT_MAX_BYTES } from '../src/client.js';
 
 function generateP256Pem(): { privatePem: string; publicPem: string } {
   const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
@@ -18,18 +18,16 @@ function decodeJwt(token: string): { header: Record<string, unknown>; payload: R
   };
 }
 
+/**
+ * A real `Response`, so the body is a stream: the client reads it through
+ * mcp-utils' size-capped reader (maxResponseBytes / maxBytes), which a
+ * hand-built `{ text, json, arrayBuffer }` fake cannot feed.
+ */
 function makeResponse(body: unknown, status = 200, contentType = 'application/json'): Response {
-  const headers = new Headers();
-  headers.set('content-type', contentType);
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    statusText: status === 200 ? 'OK' : `Error ${status}`,
-    headers,
-    text: async () => (typeof body === 'string' ? body : JSON.stringify(body)),
-    json: async () => body,
-    arrayBuffer: async () => (body instanceof Buffer ? body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength) : new ArrayBuffer(0)),
-  } as unknown as Response;
+  const init = { status, statusText: status === 200 ? 'OK' : `Error ${status}`, headers: { 'content-type': contentType } };
+  if (status === 204 || status === 304) return new Response(null, init);
+  const payload = body instanceof Buffer ? new Uint8Array(body) : typeof body === 'string' ? body : JSON.stringify(body);
+  return new Response(payload, init);
 }
 
 describe('signES256 + mintJwt', () => {
@@ -161,7 +159,8 @@ describe('AppStoreConnectClient.request', () => {
   });
 
   it('caches token between requests within lifetime', async () => {
-    fetchMock.mockResolvedValue(makeResponse({ data: [] }));
+    // A fresh Response per call: a real body stream can only be read once.
+    fetchMock.mockImplementation(async () => makeResponse({ data: [] }));
     const c = new AppStoreConnectClient();
     await c.request('GET', '/v1/apps');
     await c.request('GET', '/v1/apps');
@@ -173,7 +172,7 @@ describe('AppStoreConnectClient.request', () => {
   it('re-mints once the cached token is within 2 minutes of its 20-minute expiry', async () => {
     vi.useFakeTimers();
     try {
-      fetchMock.mockResolvedValue(makeResponse({ data: [] }));
+      fetchMock.mockImplementation(async () => makeResponse({ data: [] }));
       const c = new AppStoreConnectClient();
       await c.request('GET', '/v1/apps');
       // 17m40s later the token still has >2min of life — served from cache.
@@ -295,16 +294,7 @@ describe('AppStoreConnectClient.requestRaw', () => {
 
   it('returns raw buffer for binary report responses', async () => {
     const fakeBuffer = Buffer.from([0x1f, 0x8b, 0x08, 0x00]); // gzip magic
-    const headers = new Headers();
-    headers.set('content-type', 'application/a-gzip');
-    fetchMock.mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      statusText: 'OK',
-      headers,
-      arrayBuffer: async () => fakeBuffer.buffer.slice(fakeBuffer.byteOffset, fakeBuffer.byteOffset + fakeBuffer.byteLength),
-      text: async () => '',
-    } as unknown as Response);
+    fetchMock.mockResolvedValueOnce(makeResponse(fakeBuffer, 200, 'application/a-gzip'));
 
     const c = new AppStoreConnectClient();
     const result = await c.requestRaw('GET', '/v1/salesReports', { 'filter[vendorNumber]': '8001' });
@@ -359,5 +349,37 @@ describe('AppStoreConnectClient.requestRaw', () => {
     await c.requestRaw('GET', '/v1/salesReports');
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(init.signal).toBeInstanceOf(AbortSignal);
+  });
+});
+
+describe('response size caps (fleet-audit#1213)', () => {
+  const { privatePem } = generateP256Pem();
+
+  beforeEach(() => {
+    process.env.APP_STORE_CONNECT_KEY_ID = 'KEYID';
+    process.env.APP_STORE_CONNECT_ISSUER_ID = 'ISSUERID';
+    process.env.APP_STORE_CONNECT_PRIVATE_KEY = privatePem;
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  const oversized = (limit: number, contentType: string) =>
+    new Response('x', { status: 200, headers: { 'content-type': contentType, 'content-length': String(limit + 1) } });
+
+  it('refuses a report body over REPORT_MAX_BYTES on the wire', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(oversized(REPORT_MAX_BYTES, 'application/a-gzip')));
+    await expect(new AppStoreConnectClient().requestRaw('GET', '/v1/salesReports')).rejects.toMatchObject({
+      name: 'ResponseTooLargeError',
+    });
+  });
+
+  it('refuses a JSON body over API_MAX_RESPONSE_BYTES', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(oversized(API_MAX_RESPONSE_BYTES, 'application/json')));
+    await expect(new AppStoreConnectClient().request('GET', '/v1/apps')).rejects.toMatchObject({
+      name: 'ResponseTooLargeError',
+    });
   });
 });

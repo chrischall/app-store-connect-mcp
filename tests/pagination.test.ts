@@ -1,7 +1,8 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from 'vitest';
 import { client, paginate, nextUrlToPath, pageSize, paginateOpts, API_BASE } from '../src/client.js';
 import { listApps } from '../src/tools/apps.js';
 import type { AscEnvelope, AscResource } from '../src/types.js';
+import { textOf } from './helpers.js';
 
 type Page = AscEnvelope<AscResource[]>;
 
@@ -13,7 +14,7 @@ function page(ids: string[], next?: string): Page {
 }
 
 describe('paginate', () => {
-  let reqSpy: ReturnType<typeof vi.spyOn<typeof client, 'request'>>;
+  let reqSpy: MockInstance<typeof client.request>;
 
   beforeEach(() => {
     reqSpy = vi.spyOn(client, 'request');
@@ -143,7 +144,7 @@ describe('pageSize / paginateOpts', () => {
 });
 
 describe('list tool wiring (listApps)', () => {
-  let reqSpy: ReturnType<typeof vi.spyOn<typeof client, 'request'>>;
+  let reqSpy: MockInstance<typeof client.request>;
   beforeEach(() => {
     reqSpy = vi.spyOn(client, 'request');
   });
@@ -163,7 +164,7 @@ describe('list tool wiring (listApps)', () => {
       } as never);
 
     const result = await listApps({ auto_paginate: true, limit: 500 });
-    const parsed = JSON.parse(result.content[0].text);
+    const parsed = JSON.parse(textOf(result));
     expect(parsed.count).toBe(2);
     expect(parsed.apps.map((a: { id: string }) => a.id)).toEqual(['a1', 'a2']);
     expect(parsed.pagination).toEqual({ fetched: 2, pages: 2, has_more: false });
@@ -183,7 +184,7 @@ describe('list tool wiring (listApps)', () => {
 
     const result = await listApps();
     expect(reqSpy).toHaveBeenCalledTimes(1);
-    const parsed = JSON.parse(result.content[0].text);
+    const parsed = JSON.parse(textOf(result));
     expect(parsed.pagination.has_more).toBe(true);
     expect(parsed.pagination).toEqual({ fetched: 1, pages: 1, has_more: true });
   });

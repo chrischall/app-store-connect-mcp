@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from 'vitest';
 import { createTestHarness } from '@chrischall/mcp-utils/test';
 import type { ServerContext } from '@modelcontextprotocol/server';
 import { writeHarness, phaseOne } from './helpers.js';
@@ -33,7 +33,7 @@ describe('idSegment', () => {
 });
 
 describe('ID path segments cannot retarget requests', () => {
-  let reqSpy: ReturnType<typeof vi.spyOn<typeof client, 'request'>>;
+  let reqSpy: MockInstance<typeof client.request>;
 
   beforeEach(() => {
     reqSpy = vi.spyOn(client, 'request').mockResolvedValue({ data: [] } as never);

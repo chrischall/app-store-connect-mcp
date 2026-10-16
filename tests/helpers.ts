@@ -41,3 +41,8 @@ export async function confirmedCall(harness: TestHarness, name: string, args: Re
   const { confirmToken } = await phaseOne(harness, name, args);
   return harness.callTool(name, { ...args, confirmToken });
 }
+
+/** The text of a tool result's first content block (results are a union of block types). */
+export function textOf(result: { content: unknown[] }): string {
+  return (result.content[0] as { text: string }).text;
+}

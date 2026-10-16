@@ -1,8 +1,7 @@
 import { McpServer, type InputRequiredResult, type ServerContext } from '@modelcontextprotocol/server';
 import { z } from 'zod';
-import { confirmTokenParam, minifiedResult } from '@chrischall/mcp-utils';
+import { CONFIRM_FLOW_SENTENCE, CONFIRM_INJECTION_RULE, confirmTokenParam, confirmWrite, minifiedResult } from '@chrischall/mcp-utils';
 import { client, paginate, pageSize, paginateOpts, idSegment, ascId } from '../client.js';
-import { CONFIRM_FLOW, confirmWrite } from '../confirm.js';
 import { AscEnvelope, AscResource, ToolResult } from '../types.js';
 
 interface BuildAttrs {
@@ -112,16 +111,18 @@ export async function inviteBetaTester(args: { email: string; firstName?: string
       ...(Object.keys(relationships).length > 0 ? { relationships } : {}),
     },
   };
-  const gate = await confirmWrite(ctx, args.confirmToken, {
+  const gate = await confirmWrite(ctx, {
     tool: 'invite_beta_tester',
-    args,
     action: 'betaTester.invite',
     message: 'Review and confirm this beta tester invitation (sends a real email):',
-    target: args.email,
     summary: `Invite beta tester ${args.email} (sends a real email)`,
-    method: 'POST',
-    path: '/v1/betaTesters',
-    body,
+    // Single-account server: one ASC API key (issuer + key id) per process,
+    // so there is no per-call principal to bind.
+    account: undefined,
+    target: args.email,
+    request: { method: 'POST', path: '/v1/betaTesters', body },
+    args,
+    confirmToken: args.confirmToken,
   });
   if (gate) return gate;
   const response = await client.request<AscEnvelope<AscResource<BetaTesterAttrs>>>('POST', '/v1/betaTesters', body);
@@ -132,15 +133,18 @@ export async function deleteBetaTester(args: { betaTesterId: string; confirmToke
   // One validated path for both the preview and the real call, so the preview
   // shows exactly what will be sent.
   const path = `/v1/betaTesters/${idSegment(args.betaTesterId)}`;
-  const gate = await confirmWrite(ctx, args.confirmToken, {
+  const gate = await confirmWrite(ctx, {
     tool: 'delete_beta_tester',
-    args,
     action: 'betaTester.delete',
     message: 'Review and confirm this deletion:',
-    target: args.betaTesterId,
     summary: 'Permanently remove a beta tester from your team',
-    method: 'DELETE',
-    path,
+    // Single-account server: one ASC API key (issuer + key id) per process,
+    // so there is no per-call principal to bind.
+    account: undefined,
+    target: args.betaTesterId,
+    request: { method: 'DELETE', path },
+    args,
+    confirmToken: args.confirmToken,
   });
   if (gate) return gate;
   await client.request<null>('DELETE', path);
@@ -152,16 +156,18 @@ export async function addTestersToBetaGroup(args: { betaGroupId: string; betaTes
     data: args.betaTesterIds.map((id) => ({ id, type: 'betaTesters' })),
   };
   const path = `/v1/betaGroups/${idSegment(args.betaGroupId)}/relationships/betaTesters`;
-  const gate = await confirmWrite(ctx, args.confirmToken, {
+  const gate = await confirmWrite(ctx, {
     tool: 'add_testers_to_beta_group',
-    args,
     action: 'betaGroup.addTesters',
     message: 'Review and confirm adding these testers to the beta group:',
-    target: args.betaGroupId,
     summary: `Add ${args.betaTesterIds.length} tester(s) to beta group ${args.betaGroupId}`,
-    method: 'POST',
-    path,
-    body,
+    // Single-account server: one ASC API key (issuer + key id) per process,
+    // so there is no per-call principal to bind.
+    account: undefined,
+    target: args.betaGroupId,
+    request: { method: 'POST', path, body },
+    args,
+    confirmToken: args.confirmToken,
   });
   if (gate) return gate;
   await client.request<null>('POST', path, body);
@@ -173,16 +179,18 @@ export async function removeTestersFromBetaGroup(args: { betaGroupId: string; be
     data: args.betaTesterIds.map((id) => ({ id, type: 'betaTesters' })),
   };
   const path = `/v1/betaGroups/${idSegment(args.betaGroupId)}/relationships/betaTesters`;
-  const gate = await confirmWrite(ctx, args.confirmToken, {
+  const gate = await confirmWrite(ctx, {
     tool: 'remove_testers_from_beta_group',
-    args,
     action: 'betaGroup.removeTesters',
     message: 'Review and confirm removing these testers from the beta group:',
-    target: args.betaGroupId,
     summary: `Remove ${args.betaTesterIds.length} tester(s) from beta group ${args.betaGroupId}`,
-    method: 'DELETE',
-    path,
-    body,
+    // Single-account server: one ASC API key (issuer + key id) per process,
+    // so there is no per-call principal to bind.
+    account: undefined,
+    target: args.betaGroupId,
+    request: { method: 'DELETE', path, body },
+    args,
+    confirmToken: args.confirmToken,
   });
   if (gate) return gate;
   await client.request<null>('DELETE', path, body);
@@ -198,16 +206,18 @@ export async function submitBuildForBetaReview(args: { buildId: string; confirmT
       },
     },
   };
-  const gate = await confirmWrite(ctx, args.confirmToken, {
+  const gate = await confirmWrite(ctx, {
     tool: 'submit_build_for_beta_review',
-    args,
     action: 'build.submitForBetaReview',
     message: 'Review and confirm this submission to Apple:',
-    target: args.buildId,
     summary: `Submit build ${args.buildId} to Apple for TestFlight beta review`,
-    method: 'POST',
-    path: '/v1/betaAppReviewSubmissions',
-    body,
+    // Single-account server: one ASC API key (issuer + key id) per process,
+    // so there is no per-call principal to bind.
+    account: undefined,
+    target: args.buildId,
+    request: { method: 'POST', path: '/v1/betaAppReviewSubmissions', body },
+    args,
+    confirmToken: args.confirmToken,
   });
   if (gate) return gate;
   const response = await client.request<AscEnvelope<AscResource<{ betaReviewState: string; submittedDate?: string }>>>(
@@ -279,7 +289,7 @@ export function registerTestFlightTools(server: McpServer): void {
   server.registerTool(
     'invite_beta_tester',
     {
-      description: 'Invite a new beta tester by email (sends a real email). Optionally adds them to one or more beta groups or specific builds. ' + CONFIRM_FLOW,
+      description: 'Invite a new beta tester by email (sends a real email). Optionally adds them to one or more beta groups or specific builds. ' + `${CONFIRM_FLOW_SENTENCE} ${CONFIRM_INJECTION_RULE}`,
       inputSchema: z.object({
         email: z.string().email().describe("Tester's email address"),
         firstName: z.string().optional().describe("Tester's first name"),
@@ -296,7 +306,7 @@ export function registerTestFlightTools(server: McpServer): void {
   server.registerTool(
     'delete_beta_tester',
     {
-      description: 'Permanently remove a beta tester from your team. ' + CONFIRM_FLOW,
+      description: 'Permanently remove a beta tester from your team. ' + `${CONFIRM_FLOW_SENTENCE} ${CONFIRM_INJECTION_RULE}`,
       inputSchema: z.object({ betaTesterId: ascId.describe('Beta tester ID'), confirmToken: confirmTokenParam }),
       annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     },
@@ -306,7 +316,7 @@ export function registerTestFlightTools(server: McpServer): void {
   server.registerTool(
     'add_testers_to_beta_group',
     {
-      description: 'Add one or more existing beta testers to a beta group. ' + CONFIRM_FLOW,
+      description: 'Add one or more existing beta testers to a beta group. ' + `${CONFIRM_FLOW_SENTENCE} ${CONFIRM_INJECTION_RULE}`,
       inputSchema: z.object({
         betaGroupId: ascId.describe('Beta group ID'),
         betaTesterIds: z.array(z.string()).min(1).describe('IDs of beta testers to add'),
@@ -320,7 +330,7 @@ export function registerTestFlightTools(server: McpServer): void {
   server.registerTool(
     'remove_testers_from_beta_group',
     {
-      description: 'Remove one or more beta testers from a beta group (does not delete the testers). ' + CONFIRM_FLOW,
+      description: 'Remove one or more beta testers from a beta group (does not delete the testers). ' + `${CONFIRM_FLOW_SENTENCE} ${CONFIRM_INJECTION_RULE}`,
       inputSchema: z.object({
         betaGroupId: ascId.describe('Beta group ID'),
         betaTesterIds: z.array(z.string()).min(1).describe('IDs of beta testers to remove'),
@@ -334,7 +344,7 @@ export function registerTestFlightTools(server: McpServer): void {
   server.registerTool(
     'submit_build_for_beta_review',
     {
-      description: 'Submit a build for TestFlight beta app review (required before external testing) — submits to Apple. ' + CONFIRM_FLOW,
+      description: 'Submit a build for TestFlight beta app review (required before external testing) — submits to Apple. ' + `${CONFIRM_FLOW_SENTENCE} ${CONFIRM_INJECTION_RULE}`,
       inputSchema: z.object({ buildId: ascId.describe('Build ID to submit'), confirmToken: confirmTokenParam }),
       annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     },

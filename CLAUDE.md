@@ -6,7 +6,7 @@ MCP server for App Store Connect — apps, builds, TestFlight, customer reviews,
 
 ```bash
 npm run build        # tsc + esbuild bundle
-npm test             # vitest run
+npm test             # typecheck (src, then src + tests via tsconfig.test.json) + vitest run
 npm run test:watch   # vitest in watch mode
 ```
 
@@ -17,7 +17,6 @@ src/
   index.ts          MCP server entry point — registers all tool modules, starts stdio transport
   client.ts         AppStoreConnectClient — ES256 JWT signing, Bearer auth, 401/429 retry
   types.ts          AscEnvelope/AscResource (JSON:API) and ToolResult types
-  confirm.ts        confirmWrite() — the confirmation gate every write runs before its request
   tools/
     apps.ts         list/get apps, App Store versions, app infos
     testflight.ts   builds, beta groups/testers, invitations, beta review submission
@@ -28,9 +27,9 @@ src/
 
 All tools use `client.request()` against `https://api.appstoreconnect.apple.com/v1/...`. JWTs are minted on demand (ES256, 20-minute lifetime) and cached until 2 minutes before expiry. Each tool file exports handler functions and a `register*Tools(server)` function. `index.ts` imports and calls each registration function.
 
-Every write handler takes `(args, ctx)` and calls `confirmWrite()` (`src/confirm.ts`, over mcp-utils' `requireConfirmationWithFallback` + `confirmationFromEnv`) after building its validated path and body and before `client.request()`. A client with elicitation gets a prompt; one without gets a phase-1 preview (method, path, `willSend` body) plus a `confirmToken`, and only a repeat call carrying it writes. The token binds the tool, target and `{ method, path, body }`, so changed arguments are refused as `DRAFT_CHANGED`. `MCP_CONFIRM_MODE` / `MCP_CONFIRM_ELICITATION` / `MCP_CONFIRM_TTL_SECONDS` / `MCP_CONFIRM_SECRET` are documented in the README. A new write tool takes `confirmToken: confirmTokenParam`, ends its description with `CONFIRM_FLOW`, and gets a phase-1 / phase-2 test through `tests/helpers.ts`.
+Every write handler takes `(args, ctx)` and calls mcp-utils' `confirmWrite(ctx, { tool, action, message, summary, account: undefined, target, request: { method, path, body }, preview?, args, confirmToken })` after building its validated path and body and before `client.request()`. A client with elicitation gets a prompt; one without gets a phase-1 preview (method, path, `willSend` body) plus a `confirmToken`, and only a repeat call carrying it writes. The token binds the tool, target and `{ method, path, body }`, so changed arguments are refused as `DRAFT_CHANGED`. `MCP_CONFIRM_MODE` / `MCP_CONFIRM_ELICITATION` / `MCP_CONFIRM_TTL_SECONDS` / `MCP_CONFIRM_SECRET` are documented in the README. A new write tool takes `confirmToken: confirmTokenParam`, ends its description with `${CONFIRM_FLOW_SENTENCE} ${CONFIRM_INJECTION_RULE}` (both from mcp-utils), and gets a phase-1 / phase-2 test through `tests/helpers.ts`. Reads that return third-party text (customer reviews) answer through mcp-utils' `untrustedResult` and append `UNTRUSTED_DESCRIPTION_SUFFIX` to their description.
 
-Sales/finance reports return gzipped TSVs — those handlers use `client.requestRaw()` and parse with `zlib.gunzipSync`.
+Sales/finance reports return gzipped TSVs — those handlers use `client.requestRaw()` (capped at `REPORT_MAX_BYTES` on the wire) and parse with `zlib.gunzipSync` capped at `REPORT_MAX_INFLATED_BYTES`; JSON responses are capped by the client's `maxResponseBytes`.
 
 ## Authentication
 
