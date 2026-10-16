@@ -1,8 +1,7 @@
 import { McpServer, type InputRequiredResult, type ServerContext } from '@modelcontextprotocol/server';
 import { z } from 'zod';
-import { confirmTokenParam, minifiedResult } from '@chrischall/mcp-utils';
+import { CONFIRM_FLOW_SENTENCE, CONFIRM_INJECTION_RULE, confirmTokenParam, confirmWrite, minifiedResult } from '@chrischall/mcp-utils';
 import { client, paginate, pageSize, paginateOpts } from '../client.js';
-import { CONFIRM_FLOW, confirmWrite } from '../confirm.js';
 import { AscEnvelope, AscResource, ToolResult } from '../types.js';
 
 interface UserAttrs {
@@ -120,16 +119,18 @@ export async function inviteUser(args: {
       ...(Object.keys(relationships).length > 0 ? { relationships } : {}),
     },
   };
-  const gate = await confirmWrite(ctx, args.confirmToken, {
+  const gate = await confirmWrite(ctx, {
     tool: 'invite_user',
-    args,
     action: 'user.invite',
     message: 'Review and confirm this team invitation (sends a real email):',
-    target: args.email,
     summary: `Invite ${args.email} to your App Store Connect team with roles [${args.roles.join(', ')}] (sends a real email; roles can include ADMIN)`,
-    method: 'POST',
-    path: '/v1/userInvitations',
-    body,
+    // Single-account server: one ASC API key (issuer + key id) per process,
+    // so there is no per-call principal to bind.
+    account: undefined,
+    target: args.email,
+    request: { method: 'POST', path: '/v1/userInvitations', body },
+    args,
+    confirmToken: args.confirmToken,
   });
   if (gate) return gate;
   const response = await client.request<AscEnvelope<AscResource<UserInvitationAttrs>>>('POST', '/v1/userInvitations', body);
@@ -169,7 +170,7 @@ export function registerUserTools(server: McpServer): void {
   server.registerTool(
     'invite_user',
     {
-      description: 'Invite a new user to your App Store Connect team with specified roles (sends a real email; roles can include ADMIN). App visibility has no default: pass allAppsVisible: true, or a non-empty visibleAppIds. ' + CONFIRM_FLOW,
+      description: 'Invite a new user to your App Store Connect team with specified roles (sends a real email; roles can include ADMIN). App visibility has no default: pass allAppsVisible: true, or a non-empty visibleAppIds. ' + `${CONFIRM_FLOW_SENTENCE} ${CONFIRM_INJECTION_RULE}`,
       inputSchema: z.object({
         email: z.string().email().describe("User's email"),
         firstName: z.string().describe('First name'),

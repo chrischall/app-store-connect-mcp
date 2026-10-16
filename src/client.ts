@@ -70,6 +70,20 @@ const JWT_REFRESH_BUFFER_MS = 2 * 60 * 1000;
 // until the MCP host killed the tool call).
 const REQUEST_TIMEOUT_MS = 30_000;
 
+/**
+ * Cap on any JSON:API response body. A 200-item page with `include`s is a
+ * few hundred kB; this only stops a runaway or tampered body from being held
+ * in memory (fleet-audit#1213).
+ */
+export const API_MAX_RESPONSE_BYTES = 32 * 1024 * 1024;
+
+/**
+ * Cap on a gzipped sales/finance report as it arrives on the wire. The
+ * inflated size has its own cap in tools/sales.ts, since gzip compresses
+ * these TSVs (and any bomb) by orders of magnitude.
+ */
+export const REPORT_MAX_BYTES = 50 * 1024 * 1024;
+
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 /**
@@ -149,6 +163,7 @@ export class AppStoreConnectClient {
       serviceName: SERVICE_NAME,
       tokenManager: { withAuth: (call) => this.withAuth(call) },
       timeout: REQUEST_TIMEOUT_MS,
+      maxResponseBytes: API_MAX_RESPONSE_BYTES,
     });
   }
 
@@ -194,7 +209,10 @@ export class AppStoreConnectClient {
    * errors and timeout as JSON tools.
    */
   async requestRaw(method: HttpMethod, path: string, query?: Record<string, string | number | string[] | undefined>): Promise<{ buffer: Buffer; contentType: string | null }> {
-    const res = await this.api.fetchRaw(method, apiPath(path, query), { headers: { Accept: 'application/a-gzip' } });
+    const res = await this.api.fetchRaw(method, apiPath(path, query), {
+      headers: { Accept: 'application/a-gzip' },
+      maxBytes: REPORT_MAX_BYTES,
+    });
     return { buffer: Buffer.from(res.bytes), contentType: res.contentType };
   }
 }

@@ -1,7 +1,8 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from 'vitest';
 import { gzipSync } from 'zlib';
 import { client } from '../src/client.js';
-import { downloadSalesReport, downloadFinanceReport } from '../src/tools/sales.js';
+import { downloadSalesReport, downloadFinanceReport, parseGzippedTsv, REPORT_MAX_INFLATED_BYTES } from '../src/tools/sales.js';
+import { textOf } from './helpers.js';
 
 function makeGzippedTsv(rows: string[][]): Buffer {
   const tsv = rows.map((r) => r.join('\t')).join('\n');
@@ -9,7 +10,7 @@ function makeGzippedTsv(rows: string[][]): Buffer {
 }
 
 describe('sales tools', () => {
-  let rawSpy: ReturnType<typeof vi.spyOn<typeof client, 'requestRaw'>>;
+  let rawSpy: MockInstance<typeof client.requestRaw>;
 
   beforeEach(() => {
     rawSpy = vi.spyOn(client, 'requestRaw');
@@ -36,7 +37,7 @@ describe('sales tools', () => {
       'filter[reportSubType]': 'SUMMARY',
       'filter[version]': '1_0',
     });
-    const parsed = JSON.parse(result.content[0].text);
+    const parsed = JSON.parse(textOf(result));
     expect(parsed.totalRows).toBe(2);
     expect(parsed.rows[0]).toEqual({ Provider: 'APPLE', Title: 'My App', Units: '42' });
     expect(parsed.truncated).toBe(false);
@@ -48,7 +49,7 @@ describe('sales tools', () => {
     rawSpy.mockResolvedValueOnce({ buffer: makeGzippedTsv(rows), contentType: 'application/a-gzip' });
 
     const result = await downloadSalesReport({ vendorNumber: '8001', reportDate: '2025-09-15', limit: 3 });
-    const parsed = JSON.parse(result.content[0].text);
+    const parsed = JSON.parse(textOf(result));
     expect(parsed.totalRows).toBe(10);
     expect(parsed.returnedRows).toBe(3);
     expect(parsed.truncated).toBe(true);
@@ -90,7 +91,7 @@ describe('sales tools', () => {
     rawSpy.mockResolvedValueOnce({ buffer: gzipSync(Buffer.from(tsv, 'utf8')), contentType: 'application/a-gzip' });
 
     const result = await downloadFinanceReport({ vendorNumber: '8001', reportDate: '2025-09', regionCode: 'US' });
-    const parsed = JSON.parse(result.content[0].text);
+    const parsed = JSON.parse(textOf(result));
     expect(parsed.totalRows).toBe(2);
     expect(parsed.rows).toHaveLength(2);
     expect(parsed.rows.every((r: Record<string, string>) => r['Start Date'] === '09/01/2025')).toBe(true);
@@ -106,7 +107,7 @@ describe('sales tools', () => {
     ].join('\n');
     rawSpy.mockResolvedValueOnce({ buffer: gzipSync(Buffer.from(tsv, 'utf8')), contentType: 'application/a-gzip' });
     const result = await downloadSalesReport({ vendorNumber: '8001', reportDate: '2025-09-15' });
-    const parsed = JSON.parse(result.content[0].text);
+    const parsed = JSON.parse(textOf(result));
     expect(parsed.totalRows).toBe(3);
     expect(parsed.rows[0]).toEqual({ Provider: 'APPLE', Title: 'Short', Units: '' });
     expect(parsed.rows[2]).toEqual({ Provider: 'APPLE', Title: 'Long', Units: '3', _extra: 'extra1\textra2' });
@@ -124,7 +125,7 @@ describe('sales tools', () => {
     ].join('\n');
     rawSpy.mockResolvedValueOnce({ buffer: gzipSync(Buffer.from(tsv, 'utf8')), contentType: 'application/a-gzip' });
     const result = await downloadFinanceReport({ vendorNumber: '8001', reportDate: '2025-09', regionCode: 'Z1' });
-    const parsed = JSON.parse(result.content[0].text);
+    const parsed = JSON.parse(textOf(result));
     expect(parsed.totalRows).toBe(2);
     expect(parsed.summary).toEqual({ Total_Amount: '1.00', 'Total_Amount (2)': '2.00' });
   });
@@ -132,7 +133,7 @@ describe('sales tools', () => {
   it('downloadSalesReport: omits summary when the report has none', async () => {
     rawSpy.mockResolvedValueOnce({ buffer: makeGzippedTsv([['A', 'B'], ['1', '2']]), contentType: 'application/a-gzip' });
     const result = await downloadSalesReport({ vendorNumber: '8001', reportDate: '2025-09-15' });
-    const parsed = JSON.parse(result.content[0].text);
+    const parsed = JSON.parse(textOf(result));
     expect(parsed.totalRows).toBe(1);
     expect(parsed).not.toHaveProperty('summary');
   });
@@ -148,5 +149,23 @@ describe('sales tools', () => {
       'filter[regionCode]': 'US',
       'filter[reportType]': 'FINANCIAL',
     });
+  });
+});
+
+describe('inflated report size cap (fleet-audit#1213)', () => {
+  it('caps inflation at 256 MiB by default', () => {
+    expect(REPORT_MAX_INFLATED_BYTES).toBe(256 * 1024 * 1024);
+  });
+
+  it('refuses a report that inflates past the cap with a clear, actionable error', () => {
+    // Small on the wire, large inflated: the shape of a gzip bomb.
+    const bomb = gzipSync(Buffer.alloc(64 * 1024));
+    expect(bomb.length).toBeLessThan(1024);
+    expect(() => parseGzippedTsv(bomb, 4096)).toThrow(/too large.*narrow/i);
+  });
+
+  it('still parses a report under the cap', () => {
+    const ok = makeGzippedTsv([['A', 'B'], ['1', '2']]);
+    expect(parseGzippedTsv(ok, 4096).rows).toEqual([{ A: '1', B: '2' }]);
   });
 });

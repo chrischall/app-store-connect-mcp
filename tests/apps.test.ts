@@ -1,9 +1,10 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from 'vitest';
 import { client } from '../src/client.js';
 import { listApps, getApp, listAppStoreVersions, getAppInfos } from '../src/tools/apps.js';
+import { textOf } from './helpers.js';
 
 describe('apps tools', () => {
-  let reqSpy: ReturnType<typeof vi.spyOn<typeof client, 'request'>>;
+  let reqSpy: MockInstance<typeof client.request>;
 
   beforeEach(() => {
     reqSpy = vi.spyOn(client, 'request');
@@ -30,7 +31,7 @@ describe('apps tools', () => {
       'filter[bundleId]': undefined,
       'filter[name]': undefined,
     });
-    const parsed = JSON.parse(result.content[0].text);
+    const parsed = JSON.parse(textOf(result));
     expect(parsed.count).toBe(1);
     expect(parsed.apps[0]).toEqual({ id: '111', name: 'My App', bundleId: 'com.example.x', sku: 'X1', primaryLocale: 'en-US' });
   });
@@ -51,7 +52,7 @@ describe('apps tools', () => {
     } as never);
     const result = await getApp({ appId: '999' });
     expect(reqSpy).toHaveBeenCalledWith('GET', '/v1/apps/999');
-    const parsed = JSON.parse(result.content[0].text);
+    const parsed = JSON.parse(textOf(result));
     expect(parsed.id).toBe('999');
     expect(parsed.bundleId).toBe('b');
   });
@@ -72,7 +73,7 @@ describe('apps tools', () => {
       'filter[platform]': 'IOS',
       'filter[appStoreState]': 'READY_FOR_SALE',
     });
-    const parsed = JSON.parse(result.content[0].text);
+    const parsed = JSON.parse(textOf(result));
     expect(parsed.versions[0].versionString).toBe('1.2.0');
   });
 
@@ -82,7 +83,7 @@ describe('apps tools', () => {
     } as never);
     const result = await getAppInfos({ appId: '999' });
     expect(reqSpy).toHaveBeenCalledWith('GET', '/v1/apps/999/appInfos');
-    const parsed = JSON.parse(result.content[0].text);
+    const parsed = JSON.parse(textOf(result));
     expect(parsed.infos[0].appStoreAgeRating).toBe('FOUR_PLUS');
   });
 });

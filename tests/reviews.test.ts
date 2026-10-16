@@ -1,10 +1,11 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from 'vitest';
+import { UNTRUSTED_CONTENT_RULE, UNTRUSTED_DESCRIPTION_SUFFIX } from '@chrischall/mcp-utils';
 import { client } from '../src/client.js';
 import { listCustomerReviews, getCustomerReview } from '../src/tools/reviews.js';
-import { writeHarness, phaseOne, confirmedCall } from './helpers.js';
+import { writeHarness, phaseOne, confirmedCall, textOf } from './helpers.js';
 
 describe('reviews tools', () => {
-  let reqSpy: ReturnType<typeof vi.spyOn<typeof client, 'request'>>;
+  let reqSpy: MockInstance<typeof client.request>;
 
   beforeEach(() => {
     reqSpy = vi.spyOn(client, 'request');
@@ -35,7 +36,7 @@ describe('reviews tools', () => {
       'filter[territory]': 'USA',
       sort: '-createdDate',
     });
-    const parsed = JSON.parse(result.content[0].text);
+    const parsed = JSON.parse(textOf(result));
     expect(parsed.reviews[0].rating).toBe(5);
   });
 
@@ -96,20 +97,39 @@ describe('reviews tools', () => {
       },
     };
 
-    it('listCustomerReviews carries an untrusted-content notice naming the fields', async () => {
+    it('listCustomerReviews leads with the fleet untrusted envelope, naming the fields', async () => {
       reqSpy.mockResolvedValueOnce({ data: [injected] } as never);
-      const parsed = JSON.parse((await listCustomerReviews({ appId: '999' })).content[0].text);
-      expect(parsed.untrusted_content).toMatch(/title, body, reviewerNickname/);
-      expect(parsed.untrusted_content).toMatch(/not instructions/i);
+      const text = textOf(await listCustomerReviews({ appId: '999' }));
+      // Markers first, before any review text (fleet-audit#1366).
+      expect(text.indexOf('"untrusted_content":true')).toBe(1);
+      expect(text.indexOf('untrusted_content')).toBeLessThan(text.indexOf(injected.attributes.body));
+      const parsed = JSON.parse(text);
+      expect(parsed.untrusted_content).toBe(true);
+      expect(parsed.note).toMatch(/title, body, reviewerNickname/);
+      expect(parsed.note).toContain(UNTRUSTED_CONTENT_RULE);
       // Text is still returned verbatim so it can be read and quoted.
       expect(parsed.reviews[0].body).toBe(injected.attributes.body);
+      expect(parsed.count).toBe(1);
     });
 
-    it('getCustomerReview carries the same notice', async () => {
+    it('getCustomerReview carries the same envelope', async () => {
       reqSpy.mockResolvedValueOnce({ data: injected } as never);
-      const parsed = JSON.parse((await getCustomerReview({ reviewId: 'r1' })).content[0].text);
-      expect(parsed.untrusted_content).toMatch(/title, body, reviewerNickname/);
+      const parsed = JSON.parse(textOf(await getCustomerReview({ reviewId: 'r1' })));
+      expect(parsed.untrusted_content).toBe(true);
+      expect(parsed.note).toMatch(/title, body, reviewerNickname/);
       expect(parsed.body).toBe(injected.attributes.body);
+    });
+
+    it('both read tools end their description with the fleet untrusted suffix', async () => {
+      const harness = await writeHarness();
+      try {
+        const { tools } = await harness.client.listTools();
+        for (const name of ['list_customer_reviews', 'get_customer_review']) {
+          expect(tools.find((t) => t.name === name)?.description, name).toContain(UNTRUSTED_DESCRIPTION_SUFFIX);
+        }
+      } finally {
+        await harness.close();
+      }
     });
   });
 });

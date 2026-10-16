@@ -1,10 +1,10 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from 'vitest';
 import { client } from '../src/client.js';
 import { listUsers, listUserInvitations } from '../src/tools/users.js';
-import { writeHarness, phaseOne, confirmedCall } from './helpers.js';
+import { writeHarness, phaseOne, confirmedCall, textOf } from './helpers.js';
 
 describe('users tools', () => {
-  let reqSpy: ReturnType<typeof vi.spyOn<typeof client, 'request'>>;
+  let reqSpy: MockInstance<typeof client.request>;
 
   beforeEach(() => {
     reqSpy = vi.spyOn(client, 'request');
@@ -30,7 +30,7 @@ describe('users tools', () => {
       'filter[username]': undefined,
       'filter[roles]': ['ADMIN', 'DEVELOPER'],
     });
-    const parsed = JSON.parse(result.content[0].text);
+    const parsed = JSON.parse(textOf(result));
     expect(parsed.users[0].roles).toEqual(['ADMIN']);
   });
 

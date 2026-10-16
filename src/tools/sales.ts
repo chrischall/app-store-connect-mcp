@@ -5,6 +5,13 @@ import { minifiedResult } from '@chrischall/mcp-utils';
 import { client } from '../client.js';
 import { ToolResult } from '../types.js';
 
+/**
+ * Most a report may inflate to. Apple's largest DETAILED reports are tens of
+ * MB inflated; a body that inflates past this is either an error or a gzip
+ * bomb, and is refused before it is held in memory (fleet-audit#1213).
+ */
+export const REPORT_MAX_INFLATED_BYTES = 256 * 1024 * 1024;
+
 interface ParsedReport {
   rows: Array<Record<string, string>>;
   /** Trailer lines such as `Total_Rows` / `Total_Amount` / `Total_Units`, keyed by first cell. */
@@ -22,8 +29,20 @@ interface ParsedReport {
  * missing cells become '' and cells beyond the header are kept, tab-joined,
  * under `_extra`, so nothing is dropped.
  */
-function parseGzippedTsv(buffer: Buffer): ParsedReport {
-  const text = gunzipSync(buffer).toString('utf8');
+export function parseGzippedTsv(buffer: Buffer, maxInflatedBytes = REPORT_MAX_INFLATED_BYTES): ParsedReport {
+  let inflated: Buffer;
+  try {
+    inflated = gunzipSync(buffer, { maxOutputLength: maxInflatedBytes });
+  } catch (err) {
+    if (err instanceof RangeError && (err as NodeJS.ErrnoException).code === 'ERR_BUFFER_TOO_LARGE') {
+      throw new Error(
+        `Report too large: it inflates past ${Math.round(maxInflatedBytes / (1024 * 1024))} MiB. ` +
+          'Narrow the date range (e.g. a DAILY or WEEKLY frequency) or request the SUMMARY sub-type.',
+      );
+    }
+    throw err;
+  }
+  const text = inflated.toString('utf8');
   const lines = text.split(/\r?\n/).filter((l) => l.length > 0);
   const summary: Record<string, string> = {};
   if (lines.length === 0) return { rows: [], summary };

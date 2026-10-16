@@ -1,11 +1,11 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from 'vitest';
 import type { TestHarness } from '@chrischall/mcp-utils/test';
 import { client } from '../src/client.js';
 import { listBuilds, getBuild, listBetaGroups, listBetaTesters } from '../src/tools/testflight.js';
-import { writeHarness, phaseOne, confirmedCall } from './helpers.js';
+import { writeHarness, phaseOne, confirmedCall, textOf } from './helpers.js';
 
 describe('testflight tools', () => {
-  let reqSpy: ReturnType<typeof vi.spyOn<typeof client, 'request'>>;
+  let reqSpy: MockInstance<typeof client.request>;
 
   beforeEach(() => {
     reqSpy = vi.spyOn(client, 'request');
@@ -33,7 +33,7 @@ describe('testflight tools', () => {
       'filter[version]': undefined,
       sort: '-uploadedDate',
     });
-    const parsed = JSON.parse(result.content[0].text);
+    const parsed = JSON.parse(textOf(result));
     expect(parsed.builds[0].id).toBe('b1');
     expect(parsed.builds[0].version).toBe('42');
   });
