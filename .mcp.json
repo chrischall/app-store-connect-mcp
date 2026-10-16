@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "app-store-connect": {
-      "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/bundle.js"],
+      "command": "npx",
+      "args": ["-y", "@chrischall/app-store-connect-mcp"],
       "env": {
         "APP_STORE_CONNECT_KEY_ID": "${APP_STORE_CONNECT_KEY_ID}",
         "APP_STORE_CONNECT_ISSUER_ID": "${APP_STORE_CONNECT_ISSUER_ID}",
