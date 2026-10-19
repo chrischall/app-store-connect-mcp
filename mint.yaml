@@ -4,6 +4,19 @@ slug: app-store-connect
 summary: >-
   App Store Connect tools for Claude — apps, TestFlight builds and testers,
   customer reviews, sales/finance reports, and team users
+examples:
+  - prompt: >-
+      Show me the 1- and 2-star reviews for my app from the last few weeks and
+      summarize the most common complaints.
+    note: Reads customer reviews; nothing is posted.
+  - prompt: >-
+      What's the processing state of my latest TestFlight builds, and which
+      beta groups and testers are set up for the app?
+    note: Lists builds, beta groups and testers without changing them.
+  - prompt: >-
+      Pull last month's summary sales report for vendor 80012345 and tell me
+      total units by country.
+    note: Needs your vendor number from Payments and Financial Reports.
 env:
   - name: APP_STORE_CONNECT_KEY_ID
     required: true
