@@ -62,5 +62,9 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "allowScripts": {
+    "esbuild": false,
+    "fsevents": false
   }
 }
