@@ -26,7 +26,7 @@ MCP server for App Store Connect — apps, TestFlight, customer reviews, sales/f
 - `submit_build_for_beta_review` — Send build for beta review
 
 ### Customer Reviews
-- `list_customer_reviews` — Filter by rating/territory
+- `list_customer_reviews` — Filter by rating/territory; `appId` takes an app name or ID; `view: "brief"` gives one line per review
 - `get_customer_review` — Single review + developer response
 - `respond_to_review` — Post or update reply
 
@@ -56,3 +56,13 @@ The MCP signs short-lived JWTs locally; your private key never leaves the machin
 - For sales reports, find the **vendorNumber** in App Store Connect → Payments and Financial Reports. Daily reports are typically available ~24 hours after the date closes.
 - Every write asks the user to confirm first. Where the client can show a prompt, it does (unless the server sets `MCP_CONFIRM_ELICITATION=off`). Otherwise the first call sends nothing and returns `status: "confirmation-required"` with a preview and a `confirmToken`: show the preview to the user, and only after they approve call the same tool again with the same arguments plus `confirmToken`.
 - Most TestFlight write operations require an API key with **App Manager** or **Admin** role.
+
+## In context groups
+
+On a host that groups MCPs by context (mcp-host's context groups), this server is in the **work** group. Every tool except `asc_healthcheck` carries a `_meta.mint` hint.
+
+- **What's new** — `list_customer_reviews` is the canonical read. Its subject is `appId`: the account's app names, listed once at start and published as an enum, so "any new reviews?" fans out over every app. A name or a numeric app ID is accepted. If the apps could not be listed at start (no key yet, a rejected JWT), the argument takes an ID only and has no enum. `view: "brief"` answers one line per review (`title — <ISO date | no date> — <N stars>, <territory>`). The lines come inside the untrusted-data envelope, because review titles are written by the public. `-- none` means no reviews and `-- more` means the page was partial.
+- **What's due / what's on** — nothing here answers these. App Store Connect has no due dates and no calendar.
+- The other reads are `lookup`, with `list_builds` marked `whats-new` but not canonical. Writes are `send` (invites, review responses) or `change` (tester membership, beta review submission).
+
+A compound ask looks like "anything new at work — any new app reviews?". The work group calls `list_customer_reviews` once per app with `view: "brief"` and merges the lines with the other work MCPs. This server calls Apple's API directly with a signed JWT. It does not use a browser bridge, so it never needs a browser open.

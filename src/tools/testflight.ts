@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { CONFIRM_FLOW_SENTENCE, CONFIRM_INJECTION_RULE, confirmTokenParam, confirmWrite, minifiedResult } from '@chrischall/mcp-utils';
 import { client, paginate, pageSize, paginateOpts, idSegment, ascId } from '../client.js';
 import { AscEnvelope, AscResource, ToolResult } from '../types.js';
+import { workMeta } from './hints.js';
 
 interface BuildAttrs {
   version: string;
@@ -241,6 +242,7 @@ export function registerTestFlightTools(server: McpServer): void {
         version: z.string().optional().describe('Filter by build version (e.g. "42")'),
       }),
       annotations: { readOnlyHint: true, openWorldHint: true },
+      _meta: workMeta('whats-new', { aliases: ['testflight', 'builds', 'beta builds'] }),
     },
     listBuilds
   );
@@ -251,6 +253,7 @@ export function registerTestFlightTools(server: McpServer): void {
       description: 'Get a single build by ID — version, processing state, expiration, encryption flag.',
       inputSchema: z.object({ buildId: ascId.describe('Build ID') }),
       annotations: { readOnlyHint: true, openWorldHint: true },
+      _meta: workMeta('lookup'),
     },
     getBuild
   );
@@ -266,6 +269,7 @@ export function registerTestFlightTools(server: McpServer): void {
         isInternalGroup: z.boolean().optional().describe('true = internal-only, false = external'),
       }),
       annotations: { readOnlyHint: true, openWorldHint: true },
+      _meta: workMeta('lookup', { aliases: ['beta groups', 'testflight groups'] }),
     },
     listBetaGroups
   );
@@ -282,6 +286,7 @@ export function registerTestFlightTools(server: McpServer): void {
         auto_paginate: z.boolean().optional().describe('Follow links.next across pages until the limit is reached (default false).'),
       }),
       annotations: { readOnlyHint: true, openWorldHint: true },
+      _meta: workMeta('lookup', { aliases: ['beta testers', 'testers'] }),
     },
     listBetaTesters
   );
@@ -299,6 +304,7 @@ export function registerTestFlightTools(server: McpServer): void {
         confirmToken: confirmTokenParam,
       }),
       annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
+      _meta: workMeta('send', { aliases: ['invite tester'] }),
     },
     inviteBetaTester
   );
@@ -309,6 +315,7 @@ export function registerTestFlightTools(server: McpServer): void {
       description: 'Permanently remove a beta tester from your team. ' + `${CONFIRM_FLOW_SENTENCE} ${CONFIRM_INJECTION_RULE}`,
       inputSchema: z.object({ betaTesterId: ascId.describe('Beta tester ID'), confirmToken: confirmTokenParam }),
       annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
+      _meta: workMeta('change'),
     },
     deleteBetaTester
   );
@@ -323,6 +330,7 @@ export function registerTestFlightTools(server: McpServer): void {
         confirmToken: confirmTokenParam,
       }),
       annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
+      _meta: workMeta('change'),
     },
     addTestersToBetaGroup
   );
@@ -337,6 +345,7 @@ export function registerTestFlightTools(server: McpServer): void {
         confirmToken: confirmTokenParam,
       }),
       annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
+      _meta: workMeta('change'),
     },
     removeTestersFromBetaGroup
   );
@@ -347,6 +356,7 @@ export function registerTestFlightTools(server: McpServer): void {
       description: 'Submit a build for TestFlight beta app review (required before external testing) — submits to Apple. ' + `${CONFIRM_FLOW_SENTENCE} ${CONFIRM_INJECTION_RULE}`,
       inputSchema: z.object({ buildId: ascId.describe('Build ID to submit'), confirmToken: confirmTokenParam }),
       annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
+      _meta: workMeta('change', { aliases: ['submit for beta review'] }),
     },
     submitBuildForBetaReview
   );

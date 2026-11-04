@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { minifiedResult } from '@chrischall/mcp-utils';
 import { client, paginate, pageSize, paginateOpts, idSegment, ascId } from '../client.js';
 import { AscEnvelope, AscResource, ToolResult } from '../types.js';
+import { workMeta } from './hints.js';
 
 interface AppAttrs {
   name: string;
@@ -95,6 +96,7 @@ export function registerAppTools(server: McpServer): void {
         name: z.string().optional().describe('Exact app name filter'),
       }),
       annotations: { readOnlyHint: true, openWorldHint: true },
+      _meta: workMeta('lookup', { aliases: ['my apps', 'apps'] }),
     },
     listApps
   );
@@ -107,6 +109,7 @@ export function registerAppTools(server: McpServer): void {
         appId: ascId.describe('App Store Connect app ID (numeric, from list_apps)'),
       }),
       annotations: { readOnlyHint: true, openWorldHint: true },
+      _meta: workMeta('lookup'),
     },
     getApp
   );
@@ -123,6 +126,7 @@ export function registerAppTools(server: McpServer): void {
         appStoreState: z.string().optional().describe('Filter by state, e.g. READY_FOR_SALE, IN_REVIEW, REJECTED'),
       }),
       annotations: { readOnlyHint: true, openWorldHint: true },
+      _meta: workMeta('lookup', { aliases: ['app versions', 'releases', 'app review status'] }),
     },
     listAppStoreVersions
   );
@@ -135,6 +139,7 @@ export function registerAppTools(server: McpServer): void {
         appId: ascId.describe('App Store Connect app ID'),
       }),
       annotations: { readOnlyHint: true, openWorldHint: true },
+      _meta: workMeta('lookup', { aliases: ['age rating'] }),
     },
     getAppInfos
   );

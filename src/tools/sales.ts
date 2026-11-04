@@ -4,6 +4,7 @@ import { gunzipSync } from 'zlib';
 import { minifiedResult } from '@chrischall/mcp-utils';
 import { client } from '../client.js';
 import { ToolResult } from '../types.js';
+import { workMeta } from './hints.js';
 
 /**
  * Most a report may inflate to. Apple's largest DETAILED reports are tens of
@@ -149,6 +150,7 @@ export function registerSalesTools(server: McpServer): void {
         limit: z.number().int().min(1).max(10000).optional().describe('Max rows to return inline (default 500). Total row count is always reported.'),
       }),
       annotations: { readOnlyHint: true, openWorldHint: true },
+      _meta: workMeta('lookup', { aliases: ['sales', 'downloads', 'units', 'app sales'] }),
     },
     downloadSalesReport
   );
@@ -166,6 +168,7 @@ export function registerSalesTools(server: McpServer): void {
         limit: z.number().int().min(1).max(10000).optional().describe('Max rows to return inline (default 500)'),
       }),
       annotations: { readOnlyHint: true, openWorldHint: true },
+      _meta: workMeta('lookup', { aliases: ['proceeds', 'app revenue', 'finance report'] }),
     },
     downloadFinanceReport
   );
