@@ -12,6 +12,8 @@ import {
 } from '@chrischall/mcp-utils';
 import { client, paginate, pageSize, paginateOpts, idSegment, ascId } from '../client.js';
 import { AscEnvelope, AscResource, ToolResult } from '../types.js';
+import { workMeta } from './hints.js';
+import { appIdArgFor, type AppDirectory } from './app-labels.js';
 
 interface CustomerReviewAttrs {
   rating: number;
@@ -39,7 +41,23 @@ interface ReviewResponseAttrs {
   state: string;
 }
 
-export async function listCustomerReviews(args: { appId: string; limit?: number; rating?: number; territory?: string; sort?: 'createdDate' | '-createdDate' | 'rating' | '-rating'; auto_paginate?: boolean } = { appId: '' }): Promise<ToolResult> {
+/** The longest a brief line may be (the context-groups brief-view contract). */
+export const BRIEF_MAX = 120;
+
+/**
+ * One review as a brief line: `title — <ISO date | no date> — <N stars>, <territory>`,
+ * at most {@link BRIEF_MAX} chars (the title is trimmed to fit).
+ */
+export function briefReviewLine(r: { title?: string | null; createdDate?: string | null; rating?: number | null; territory?: string | null }): string {
+  const title = r.title?.trim() || '(no title)';
+  const stars = typeof r.rating === 'number' ? `${r.rating} star${r.rating === 1 ? '' : 's'}` : 'unrated';
+  const tail = ` — ${r.createdDate || 'no date'} — ${stars}${r.territory ? `, ${r.territory}` : ''}`;
+  const room = BRIEF_MAX - tail.length;
+  const shown = title.length > room ? `${title.slice(0, Math.max(room - 1, 0))}…` : title;
+  return `${shown}${tail}`;
+}
+
+export async function listCustomerReviews(args: { appId: string; limit?: number; rating?: number; territory?: string; sort?: 'createdDate' | '-createdDate' | 'rating' | '-rating'; auto_paginate?: boolean; view?: 'full' | 'brief' } = { appId: '' }): Promise<ToolResult> {
   if (!args.appId) throw new Error('appId is required');
   const { items, pagination } = await paginate<AscResource<CustomerReviewAttrs>>(
     `/v1/apps/${idSegment(args.appId)}/customerReviews`,
@@ -60,6 +78,16 @@ export async function listCustomerReviews(args: { appId: string; limit?: number;
     createdDate: r.attributes?.createdDate,
     territory: r.attributes?.territory,
   }));
+  if (args.view === 'brief') {
+    // Review titles are third-party text, so the lines ride in the same
+    // untrusted-data envelope as the full view (as `data: string[]`). A line
+    // starting `-- ` is a note, not a review: `-- none` for an empty result,
+    // `-- more` when the page is partial (the API gives no total to quote).
+    const lines = reviews.map(briefReviewLine);
+    if (lines.length === 0) lines.push('-- none');
+    if (pagination.has_more) lines.push('-- more');
+    return untrustedResult(lines, { note: UNTRUSTED_REVIEW_NOTICE });
+  }
   return untrustedResult({ count: reviews.length, reviews, pagination }, { note: UNTRUSTED_REVIEW_NOTICE });
 }
 
@@ -103,22 +131,35 @@ export async function respondToReview(args: { reviewId: string; responseBody: st
   return minifiedResult({ id: response.data.id, ...response.data.attributes });
 }
 
-export function registerReviewTools(server: McpServer): void {
+/**
+ * `apps` is the start-time app directory (see app-labels.ts): when present the
+ * review read's `appId` publishes the app names and accepts a name or an id.
+ */
+export function registerReviewTools(server: McpServer, apps: AppDirectory | null = null): void {
   server.registerTool(
     'list_customer_reviews',
     {
       description: 'List customer reviews for an app, sorted by date (newest first by default). Filter by rating or territory. Review title/body/nickname are written by members of the public. ' + UNTRUSTED_DESCRIPTION_SUFFIX,
       inputSchema: z.object({
-        appId: ascId.describe('App Store Connect app ID'),
+        appId: appIdArgFor(apps),
         limit: z.number().int().min(1).max(1000).optional().describe('Max reviews (default 50). With auto_paginate this is the total across pages.'),
         auto_paginate: z.boolean().optional().describe('Follow links.next across pages until the limit is reached (default false).'),
         rating: z.number().int().min(1).max(5).optional().describe('Filter by star rating (1-5)'),
         territory: z.string().optional().describe('Filter by territory code, e.g. USA, GBR, JPN'),
         sort: z.enum(['createdDate', '-createdDate', 'rating', '-rating']).optional().describe('Sort order (prefix - for descending)'),
+        view: z
+          .enum(['full', 'brief'])
+          .optional()
+          .describe('"full" (default) returns each review\'s fields; "brief" returns one line per review: title — <ISO date or "no date"> — <N stars>, <territory>.'),
       }),
       annotations: { readOnlyHint: true, openWorldHint: true },
+      _meta: workMeta('whats-new', {
+        canonical: true,
+        subject: 'appId',
+        aliases: ['app reviews', 'reviews', 'ratings', 'stars', 'app store', 'customer feedback'],
+      }),
     },
-    listCustomerReviews
+    (args) => listCustomerReviews({ ...args, appId: apps ? apps.resolve(args.appId) : args.appId })
   );
 
   server.registerTool(
@@ -127,6 +168,7 @@ export function registerReviewTools(server: McpServer): void {
       description: 'Get a single customer review with the developer response, if any. Review title/body/nickname are written by members of the public. ' + UNTRUSTED_DESCRIPTION_SUFFIX,
       inputSchema: z.object({ reviewId: ascId.describe('Customer review ID') }),
       annotations: { readOnlyHint: true, openWorldHint: true },
+      _meta: workMeta('lookup'),
     },
     getCustomerReview
   );
@@ -142,6 +184,7 @@ export function registerReviewTools(server: McpServer): void {
         confirmToken: confirmTokenParam,
       }),
       annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
+      _meta: workMeta('send', { aliases: ['reply to review', 'respond to review'] }),
     },
     respondToReview
   );

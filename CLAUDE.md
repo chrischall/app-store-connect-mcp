@@ -23,6 +23,8 @@ src/
     reviews.ts      customer reviews, developer responses
     sales.ts        sales and finance report TSV downloads (gzipped)
     users.ts        team users, invitations
+    hints.ts        `_meta.mint` context-group hints (`workMeta`)
+    app-labels.ts   start-time app directory: app names as the review read's `appId` enum
 ```
 
 All tools use `client.request()` against `https://api.appstoreconnect.apple.com/v1/...`. JWTs are minted on demand (ES256, 20-minute lifetime) and cached until 2 minutes before expiry. Each tool file exports handler functions and a `register*Tools(server)` function. `index.ts` imports and calls each registration function.

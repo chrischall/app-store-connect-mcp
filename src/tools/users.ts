@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { CONFIRM_FLOW_SENTENCE, CONFIRM_INJECTION_RULE, confirmTokenParam, confirmWrite, minifiedResult } from '@chrischall/mcp-utils';
 import { client, paginate, pageSize, paginateOpts } from '../client.js';
 import { AscEnvelope, AscResource, ToolResult } from '../types.js';
+import { workMeta } from './hints.js';
 
 interface UserAttrs {
   username: string;
@@ -149,6 +150,7 @@ export function registerUserTools(server: McpServer): void {
         roles: z.array(z.enum(ROLE_VALUES)).optional().describe('Filter by one or more roles'),
       }),
       annotations: { readOnlyHint: true, openWorldHint: true },
+      _meta: workMeta('lookup', { aliases: ['team', 'team members'] }),
     },
     listUsers
   );
@@ -163,6 +165,7 @@ export function registerUserTools(server: McpServer): void {
         email: z.string().optional().describe('Exact email filter'),
       }),
       annotations: { readOnlyHint: true, openWorldHint: true },
+      _meta: workMeta('lookup', { aliases: ['pending invitations'] }),
     },
     listUserInvitations
   );
@@ -182,6 +185,7 @@ export function registerUserTools(server: McpServer): void {
         confirmToken: confirmTokenParam,
       }),
       annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
+      _meta: workMeta('send', { aliases: ['invite user', 'add to team'] }),
     },
     inviteUser
   );
