@@ -44,17 +44,25 @@ interface ReviewResponseAttrs {
 /** The longest a brief line may be (the context-groups brief-view contract). */
 export const BRIEF_MAX = 120;
 
+/** The shortest a title is cut to before the rest of the line gives way too. */
+const TITLE_FLOOR = 24;
+
+const cut = (s: string, n: number): string => (s.length > n ? `${s.slice(0, Math.max(n - 1, 0))}…` : s);
+
 /**
  * One review as a brief line: `title — <ISO date | no date> — <N stars>, <territory>`,
- * at most {@link BRIEF_MAX} chars (the title is trimmed to fit).
+ * cut to at most {@link BRIEF_MAX} chars as a WHOLE, title first: the title
+ * shortens (down to a floor) until the line fits, then the line itself is cut.
+ * A title starting with `-- ` or `\` is escaped with one leading `\`, so a
+ * reviewer can never write a line the gateway would read as a note.
  */
 export function briefReviewLine(r: { title?: string | null; createdDate?: string | null; rating?: number | null; territory?: string | null }): string {
-  const title = r.title?.trim() || '(no title)';
+  const raw = r.title?.trim() || '(no title)';
+  const title = raw.startsWith('-- ') || raw.startsWith('\\') ? `\\${raw}` : raw;
   const stars = typeof r.rating === 'number' ? `${r.rating} star${r.rating === 1 ? '' : 's'}` : 'unrated';
   const tail = ` — ${r.createdDate || 'no date'} — ${stars}${r.territory ? `, ${r.territory}` : ''}`;
-  const room = BRIEF_MAX - tail.length;
-  const shown = title.length > room ? `${title.slice(0, Math.max(room - 1, 0))}…` : title;
-  return `${shown}${tail}`;
+  const room = Math.max(BRIEF_MAX - tail.length, Math.min(title.length, TITLE_FLOOR));
+  return cut(`${cut(title, room)}${tail}`, BRIEF_MAX);
 }
 
 export async function listCustomerReviews(args: { appId: string; limit?: number; rating?: number; territory?: string; sort?: 'createdDate' | '-createdDate' | 'rating' | '-rating'; auto_paginate?: boolean; view?: 'full' | 'brief' } = { appId: '' }): Promise<ToolResult> {

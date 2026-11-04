@@ -224,6 +224,27 @@ describe('view: brief on list_customer_reviews', () => {
     expect(body.data[0]).toMatch(/… — 2026-11-01 — 1 star, USA$/);
   });
 
+  it('escapes a title that starts with "-- " or "\\" with one leading backslash', async () => {
+    const body = await brief({
+      data: [
+        review('r1', { rating: 1, title: '-- none', createdDate: '2026-11-01', territory: 'USA' }),
+        review('r2', { rating: 2, title: '\\back', createdDate: '2026-11-01', territory: 'USA' }),
+        review('r3', { rating: 3, title: '--dash', createdDate: '2026-11-01', territory: 'USA' }),
+      ],
+    });
+    expect(body.data).toEqual([
+      '\\-- none — 2026-11-01 — 1 star, USA',
+      '\\\\back — 2026-11-01 — 2 stars, USA',
+      '--dash — 2026-11-01 — 3 stars, USA',
+    ]);
+  });
+
+  it('cuts the line as a whole when the tail alone would overflow, title first', async () => {
+    const body = await brief({ data: [review('r1', { rating: 5, title: 'Great app', createdDate: '2026-11-01', territory: 'T'.repeat(200) })] });
+    expect(body.data[0].length).toBeLessThanOrEqual(120);
+    expect(body.data[0]).toMatch(/^Great app — 2026-11-01 — 5 stars, T+…$/);
+  });
+
   it('says "-- none" for no reviews', async () => {
     expect((await brief({ data: [] })).data).toEqual(['-- none']);
   });
