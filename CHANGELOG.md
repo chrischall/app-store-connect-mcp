@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.4.0](https://github.com/chrischall/app-store-connect-mcp/compare/v1.3.2...v1.4.0) (2026-11-04)
+
+
+### Features
+
+* context-group hints ([#164](https://github.com/chrischall/app-store-connect-mcp/issues/164)) ([a2ed895](https://github.com/chrischall/app-store-connect-mcp/commit/a2ed89521bcecc2e3e7b23d9216845aed02b87b3))
+
+
+### Bug Fixes
+
+* **brief:** align the brief view with the fleet contract ([#165](https://github.com/chrischall/app-store-connect-mcp/issues/165)) ([6a61c9e](https://github.com/chrischall/app-store-connect-mcp/commit/6a61c9ea7a3815d8d5e46647da8c32a601dc8e09))
+* **deps:** Bump @chrischall/mcp-utils ([#163](https://github.com/chrischall/app-store-connect-mcp/issues/163)) ([eb162e8](https://github.com/chrischall/app-store-connect-mcp/commit/eb162e86339fd91965d74e0d60d5df6e7ee54be7))
+* **deps:** Bump the production-dependencies group with 3 updates ([#159](https://github.com/chrischall/app-store-connect-mcp/issues/159)) ([36fff29](https://github.com/chrischall/app-store-connect-mcp/commit/36fff29cdcb0c30f9f6a81efa2530c7ddc7a05b3))
+* **deps:** Bump the production-dependencies group with 3 updates ([#161](https://github.com/chrischall/app-store-connect-mcp/issues/161)) ([39356f8](https://github.com/chrischall/app-store-connect-mcp/commit/39356f8935941871501a19948c3bf2aea9721c4c))
+
+
+### Documentation
+
+* **mint:** add sample prompts for the public catalog ([#156](https://github.com/chrischall/app-store-connect-mcp/issues/156)) ([f8be3a4](https://github.com/chrischall/app-store-connect-mcp/commit/f8be3a4bd46256df420e34da9cb438e056baabb3))
+
 ## [1.3.2](https://github.com/chrischall/app-store-connect-mcp/compare/v1.3.1...v1.3.2) (2026-10-16)
 
 
