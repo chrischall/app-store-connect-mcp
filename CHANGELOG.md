@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.1](https://github.com/chrischall/app-store-connect-mcp/compare/v1.4.0...v1.4.1) (2026-11-24)
+
+
+### Bug Fixes
+
+* **deps:** Bump @chrischall/mcp-utils ([#167](https://github.com/chrischall/app-store-connect-mcp/issues/167)) ([89e2b67](https://github.com/chrischall/app-store-connect-mcp/commit/89e2b676463cae3560e9c1bdfe3db92700173a81))
+* **deps:** Bump the production-dependencies group with 2 updates ([#169](https://github.com/chrischall/app-store-connect-mcp/issues/169)) ([1e6f752](https://github.com/chrischall/app-store-connect-mcp/commit/1e6f75277afae0ea3e9e79e81881ccd420a5b6cc))
+
 ## [1.4.0](https://github.com/chrischall/app-store-connect-mcp/compare/v1.3.2...v1.4.0) (2026-11-04)
 
 
